@@ -43,8 +43,7 @@ account_web/
 ├── DESIGN.md                  # Revolut & Stripe 頂級金融設計規範
 ├── README.md                  # 專案介紹與使用者文檔
 ├── .gitignore                 # 嚴格排除 *.xlsx, *.csv, node_modules, dist
-├── public/
-│   └── _redirects             # Cloudflare Pages SPA 路由重定向 (/* /index.html 200)
+├── public/                    # 靜態資源目錄 (Cloudflare Pages 預設原生支援 SPA 路由回退，切勿放 /* /index.html 200 的 _redirects 避免 100324 迴圈報錯)
 ├── src/
 │   ├── components/
 │   │   ├── Header.tsx         # 頂部導覽、RWD 膠囊連線狀態、即時同步、記一筆按鈕
@@ -138,5 +137,4 @@ npm run preview
   - **Framework preset**：`Vite`
   - **Build command**：`npm run build`
   - **Build output directory**：`dist`
-  - **Node.js 版本**：18+ 或 20+
-- **SPA 路由**：`public/_redirects` 會自動複製到 `dist/_redirects`，確保任何二級路徑重新整理均回傳 `200 /index.html`。
+- **SPA 路由**：Cloudflare Pages 在沒有 `404.html` 時，原生預設自動將所有非靜態檔案路由回退至 `index.html`，無需且不可建立 `/* /index.html 200` 之 `_redirects`（否則會觸發 Wrangler 100324 無限迴圈報錯）。
