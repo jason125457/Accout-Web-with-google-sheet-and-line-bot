@@ -23,9 +23,9 @@ export const Header: React.FC<HeaderProps> = ({
   const isDemoMode = dataSource === 'demo';
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 transition-all h-16 sm:h-[72px]">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-full">
-        <div className="flex items-center justify-between h-full">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200/70 transition-all pt-[env(safe-area-inset-top,0px)]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-[72px]">
           {/* Brand Logo & Title */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-900 via-teal-900 to-teal-700 flex items-center justify-center text-white shadow-md shadow-teal-900/15 border border-white/20 shrink-0">

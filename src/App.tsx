@@ -282,10 +282,10 @@ export const App: React.FC = () => {
   }, [filteredTransactions]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-5 z-50 animate-bounce-short">
+        <div className="fixed top-[calc(4.5rem+env(safe-area-inset-top,0px))] right-5 z-50 animate-bounce-short">
           <div
             className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center space-x-2 text-xs font-semibold ${
               toastMessage.type === 'success'
@@ -316,7 +316,7 @@ export const App: React.FC = () => {
       />
 
       {/* Tab Navigation */}
-      <div className="sticky top-16 sm:top-[72px] z-20 bg-white/90 backdrop-blur-sm border-b border-slate-200/70">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] sm:top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 bg-white/90 backdrop-blur-sm border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-1.5 py-1.5 sm:py-2">
             <button
