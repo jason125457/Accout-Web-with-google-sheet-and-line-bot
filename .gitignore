@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production build output (Cloudflare builds this automatically)
+dist/
+dist-ssr/
+*.local
+
+# Environment variables & Local configs
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Private Financial Data & Excel files (CRITICAL: Do NOT commit real data!)
+*.xlsx
+*.xls
+*.csv
+記帳.xlsx
+data/
+public/data/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor & OS files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db

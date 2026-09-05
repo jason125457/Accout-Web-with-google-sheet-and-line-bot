@@ -1,0 +1,80 @@
+import { MonthlySummary, Transaction } from '../types/finance';
+
+/**
+ * Returns current month string in "YYYY-MM" format based on local user time.
+ */
+export function getCurrentMonthString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Dynamically aggregates transactions into MonthlySummary[] format.
+ * This ensures that when filters (like "日常模式" excluding >= $5k) are applied,
+ * or when manual records are added, the monthly summaries for charts and metrics
+ * dynamically and immediately reflect the exact filtered sums.
+ */
+export function calculateDynamicMonthlySummaries(
+  transactions: Transaction[],
+  baseSummaries: MonthlySummary[] = []
+): MonthlySummary[] {
+  // If there are no transactions at all, return baseSummaries
+  if (!transactions || transactions.length === 0) {
+    return [...baseSummaries].sort((a, b) => a.month.localeCompare(b.month));
+  }
+
+  const monthTotals = new Map<string, number>();
+
+  transactions.forEach(t => {
+    if (!t.month || t.amount <= 0) return;
+    monthTotals.set(t.month, (monthTotals.get(t.month) || 0) + t.amount);
+  });
+
+  // Ensure any historical month present in baseSummaries is also represented
+  const allMonths = new Set<string>();
+  monthTotals.forEach((_, m) => allMonths.add(m));
+  baseSummaries.forEach(s => {
+    if (s.month && /^\d{4}-\d{2}$/.test(s.month)) {
+      allMonths.add(s.month);
+    }
+  });
+
+  const result: MonthlySummary[] = Array.from(allMonths).map(month => ({
+    month,
+    totalExpense: Math.round((monthTotals.get(month) || 0) * 100) / 100
+  }));
+
+  return result.sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/**
+ * Calculates the standard 6-month average baseline expense.
+ * In accordance with AGENTS.md rules, if the latest month in data is the currently
+ * ongoing/incomplete month, it is excluded so that a month with only a few days of
+ * expenses does not pull down the overall lifestyle baseline.
+ */
+export function calculateSixMonthAverage(
+  summaries: MonthlySummary[],
+  currentMonthStr: string = getCurrentMonthString()
+): number {
+  if (!summaries || summaries.length === 0) return 0;
+
+  const sorted = [...summaries].sort((a, b) => a.month.localeCompare(b.month));
+  const latestMonth = sorted[sorted.length - 1]?.month;
+  const isLatestOngoing = latestMonth === currentMonthStr;
+
+  // Exclude ongoing month if it's the latest month in the dataset
+  const completedMonths = isLatestOngoing
+    ? sorted.filter(s => s.month < currentMonthStr)
+    : sorted;
+
+  const targetMonths = completedMonths.slice(-6);
+
+  if (targetMonths.length === 0) {
+    // If only the ongoing month exists, fall back to it
+    return sorted.length > 0 ? Math.round(sorted[sorted.length - 1].totalExpense) : 0;
+  }
+
+  const sum = targetMonths.reduce((acc, cur) => acc + cur.totalExpense, 0);
+  return Math.round(sum / targetMonths.length);
+}
