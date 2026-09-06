@@ -99,16 +99,16 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6 min-w-0">
       {/* ── Stacked Bar Chart ── */}
-      <div className="fintech-card p-5 sm:p-6">
+      <div className="fintech-card p-4 sm:p-6 min-w-0 overflow-hidden">
         <div className="flex items-center space-x-2.5 mb-5 pb-4 border-b border-slate-100">
-          <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-700 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-700 flex items-center justify-center shrink-0">
             <BarChart3 className="w-4 h-4" />
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">每月花費類別分佈</h2>
-            <p className="text-xs text-slate-400">點擊月份長條 → 查看當月明細</p>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight truncate">每月花費類別分佈</h2>
+            <p className="text-xs text-slate-400 truncate">點擊月份長條 → 查看當月明細</p>
           </div>
         </div>
 
@@ -119,13 +119,13 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
             return (
               <div key={cat} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                {cat}
+                <span>{cat}</span>
               </div>
             );
           })}
         </div>
 
-        <div className="h-72 w-full">
+        <div className="h-64 sm:h-72 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}

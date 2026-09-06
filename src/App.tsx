@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
+import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
 import { ExpenseCharts } from './components/ExpenseCharts';
-import { FilterBar } from './components/FilterBar';
 import { TransactionList } from './components/TransactionList';
-import { SyncModal } from './components/SyncModal';
-import { AddRecordModal } from './components/AddRecordModal';
-import { BurnRateCard } from './components/BurnRateCard';
-import { InsightsPanel } from './components/InsightsPanel';
+import { BudgetProgressPanel } from './components/BudgetProgressPanel';
 import { MonthlyBreakdownPage } from './components/MonthlyBreakdownPage';
+import { SyncModal } from './components/SyncModal';
 import { Transaction, MonthlySummary, GasConfig, FilterState } from './types/finance';
 import { fetchFromGas, normalizeMonthString } from './utils/gasApi';
 import { DEMO_TRANSACTIONS, DEMO_SUMMARIES } from './utils/demoData';
@@ -18,12 +16,11 @@ import {
   getGasConfig,
   saveGasConfig,
   getCustomTransactions,
-  saveCustomTransactions,
   deleteCustomTransaction,
   saveCachedData,
   getCachedData
 } from './utils/storage';
-import { AlertTriangle, CheckCircle2, LayoutDashboard, CalendarDays } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,11 +34,13 @@ export const App: React.FC = () => {
   // Tab navigation
   const [activeTab, setActiveTab] = useState<'dashboard' | 'monthly'>('dashboard');
 
+  // Mobile sidebar state
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // Modals
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Filters
+  // Filters & Sorting state
   const [filters, setFilters] = useState<FilterState>({
     selectedMonth: 'all',
     selectedCategory: 'all',
@@ -66,7 +65,7 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Show auto-dismissing toast with timer cleanup
+  // Toast notification helper
   const toastTimerRef = useRef<any>(null);
   const showToast = (type: 'success' | 'warn' | 'error', text: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -74,7 +73,7 @@ export const App: React.FC = () => {
     toastTimerRef.current = setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Load built-in demo data (shown before any GAS connection is configured)
+  // Load demo data
   const loadDemoData = () => {
     const customRecords = getCustomTransactions();
     setTransactions([...customRecords, ...DEMO_TRANSACTIONS]);
@@ -89,7 +88,6 @@ export const App: React.FC = () => {
       const savedConfig = getGasConfig();
 
       if (savedConfig.webAppUrl) {
-        // Try fetching from Google Apps Script
         const res = await fetchFromGas(savedConfig.webAppUrl, savedConfig.secretToken);
         if (res.success && res.details && res.summary) {
           const customRecords = getCustomTransactions();
@@ -97,17 +95,16 @@ export const App: React.FC = () => {
           setMonthlySummaries(res.summary);
           setDataSource('cloud');
           saveCachedData({ details: res.details, summary: res.summary });
-          showToast('success', `已連線 Google 雲端！成功載入 ${res.details.length} 筆即時資料。`);
+          showToast('success', `已連線 Google 雲端！成功載入 ${res.details.length} 筆即時帳目。`);
           setIsLoading(false);
           return;
         }
       }
 
-      // If no cloud config or cloud fetch failed, try cache → then demo data
+      // If cloud fetch failed, load cache or demo
       const cache = getCachedData();
       if (cache && cache.details.length > 0) {
         const customRecords = getCustomTransactions();
-        // Re-normalize months in case the cache was stored before the normalizer fix
         const cleanDetails = cache.details.map(t => ({
           ...t,
           month: normalizeMonthString(t.month) || (t.date?.slice(0, 7) ?? '')
@@ -118,7 +115,7 @@ export const App: React.FC = () => {
         })).filter(s => /^\d{4}-\d{2}$/.test(s.month));
         setTransactions([...customRecords, ...cleanDetails]);
         setMonthlySummaries(cleanSummary);
-        setDataSource('cloud'); // cached = previously synced cloud data
+        setDataSource('cloud');
       } else {
         loadDemoData();
       }
@@ -149,9 +146,9 @@ export const App: React.FC = () => {
       setGasConfig(updatedConfig);
       saveGasConfig(updatedConfig);
       saveCachedData({ details: res.details, summary: res.summary });
-      showToast('success', `同步成功！已由 Google 雲端更新至最新帳目 (${nowStr})。`);
+      showToast('success', `同步成功！已由 Google 雲端更新至最新資料 (${nowStr})。`);
     } else {
-      showToast('error', res.message || '連線 Google 失敗，請確認 Apps Script 部署設定。');
+      showToast('error', res.message || '連線 Google 失敗，請確認 Apps Script 部署。');
     }
   };
 
@@ -173,12 +170,12 @@ export const App: React.FC = () => {
       showToast('success', 'Google 試算表連線成功！已切換為雲端即時同步。');
       return true;
     } else {
-      showToast('error', res.message || '連線失敗，請檢查網址與通關密鑰。');
+      showToast('error', res.message || '連線失敗，請檢查網址與 Token。');
       return false;
     }
   };
 
-  // Reset to demo mode (disconnect GAS)
+  // Reset to demo mode
   const handleResetToLocal = () => {
     const emptyConfig: GasConfig = { webAppUrl: '', secretToken: '', lastSyncTime: '' };
     setGasConfig(emptyConfig);
@@ -187,17 +184,7 @@ export const App: React.FC = () => {
     showToast('warn', '已中斷 Google 連線，切換回 Demo 示範模式。');
   };
 
-  // Handle Add Record locally
-  const handleAddRecord = (record: Transaction) => {
-    const updated = [record, ...transactions];
-    setTransactions(updated);
-    // Persist custom records to localStorage
-    const currentCustom = getCustomTransactions();
-    saveCustomTransactions([record, ...currentCustom]);
-    showToast('success', `已成功新增一筆消費：${record.item} (NT$ ${record.amount})`);
-  };
-
-  // Handle Delete Record locally
+  // Delete Record locally
   const handleDeleteRecord = (id: string) => {
     const target = transactions.find(t => t.id === id);
     const updated = transactions.filter(t => t.id !== id);
@@ -206,7 +193,7 @@ export const App: React.FC = () => {
     showToast('warn', `已刪除手動記帳：${target?.item || '該筆項目'} (NT$ ${target?.amount || 0})`);
   };
 
-  // Extract available months for filter dropdown
+  // Available months for filter dropdown
   const availableMonths = useMemo(() => {
     const monthSet = new Set<string>();
     transactions.forEach(t => {
@@ -220,26 +207,18 @@ export const App: React.FC = () => {
     return Array.from(monthSet).sort((a, b) => b.localeCompare(a));
   }, [transactions, monthlySummaries]);
 
-  // Filter and Sort transactions
+  // Filtered transactions for list view (supporting keyword, category, big expenses, and sorting)
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      // Month filter
       if (filters.selectedMonth !== 'all' && t.month !== filters.selectedMonth) {
         return false;
       }
-      // Category filter
       if (filters.selectedCategory !== 'all' && t.category !== filters.selectedCategory) {
         return false;
       }
-      // Big expense filter (>= 1000)
       if (filters.onlyBigExpenses && t.amount < 1000) {
         return false;
       }
-      // Exclude large expenses (日常模式)
-      if (filters.excludeLargeThreshold !== null && t.amount >= filters.excludeLargeThreshold) {
-        return false;
-      }
-      // Keyword search
       if (filters.searchQuery.trim()) {
         const query = filters.searchQuery.trim().toLowerCase();
         const matchItem = t.item.toLowerCase().includes(query);
@@ -265,27 +244,16 @@ export const App: React.FC = () => {
     });
   }, [transactions, filters]);
 
-  // Transactions for charts (apply excludeLargeThreshold but NOT other filters, so charts show full month context)
-  const chartTransactions = useMemo(() => {
-    if (filters.excludeLargeThreshold === null) return transactions;
-    return transactions.filter(t => t.amount < filters.excludeLargeThreshold!);
-  }, [transactions, filters.excludeLargeThreshold]);
-
-  // Dynamically compute monthly summaries from chartTransactions to support "日常模式" and manual records
+  // Dynamic monthly summaries
   const dynamicMonthlySummaries = useMemo(() => {
-    return calculateDynamicMonthlySummaries(chartTransactions, monthlySummaries);
-  }, [chartTransactions, monthlySummaries]);
-
-  // Total filtered amount
-  const totalFilteredAmount = useMemo(() => {
-    return filteredTransactions.reduce((acc, cur) => acc + cur.amount, 0);
-  }, [filteredTransactions]);
+    return calculateDynamicMonthlySummaries(transactions, monthlySummaries);
+  }, [transactions, monthlySummaries]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="min-h-screen bg-[#FBF9F5] text-slate-900 flex overflow-x-hidden w-full max-w-[100vw] relative">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-[calc(4.5rem+env(safe-area-inset-top,0px))] right-5 z-50 animate-bounce-short">
+        <div className="fixed top-5 right-3.5 sm:right-5 z-50 animate-bounce-short max-w-[90vw]">
           <div
             className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center space-x-2 text-xs font-semibold ${
               toastMessage.type === 'success'
@@ -296,156 +264,128 @@ export const App: React.FC = () => {
             }`}
           >
             {toastMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-teal-400" />
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
             ) : (
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             )}
-            <span>{toastMessage.text}</span>
+            <span className="truncate">{toastMessage.text}</span>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <Header
-        gasConfig={gasConfig}
+      {/* 1. Left Sidebar Navigation */}
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        dataSource={dataSource}
         isSyncing={isSyncing}
         onRefresh={handleRefresh}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        dataSource={dataSource}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Tab Navigation */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] sm:top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 bg-white/90 backdrop-blur-sm border-b border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-1.5 py-1.5 sm:py-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'dashboard'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>📊 儀表板</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('monthly')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'monthly'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <CalendarDays className="w-3.5 h-3.5" />
-              <span>📅 每月花費分析</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* 2. Right Main Content Area */}
+      <div className="flex-1 min-w-0 w-full lg:pl-64 flex flex-col min-h-screen overflow-x-hidden">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
+          {/* Top Greeting & Month Selector */}
+          <TopGreetingBar
+            selectedMonth={filters.selectedMonth}
+            availableMonths={availableMonths}
+            onSelectMonth={(m) => setFilters(prev => ({ ...prev, selectedMonth: m }))}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+            isSyncing={isSyncing}
+            onRefresh={handleRefresh}
+          />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {isLoading ? (
-          <div className="py-24 text-center space-y-3">
-            <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm font-semibold text-slate-700">正在讀取財務記帳資料...</p>
-            <p className="text-xs text-slate-400">正在連接與初始化資料結構</p>
-          </div>
-        ) : activeTab === 'dashboard' ? (
-          <>
-            {/* Demo Mode banner */}
-            {dataSource === 'demo' && (
-              <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-start sm:items-center space-x-2.5 text-violet-900">
-                  <span className="text-lg leading-none shrink-0">🎭</span>
-                  <p>
-                    <strong className="font-bold">Demo 示範模式：</strong>
-                    目前顯示的是範例假資料，並非您的真實帳目。
-                    請點擊右方按鈕連線您的 Google 試算表，即可看到即時真實記帳資料。
-                  </p>
+          {isLoading ? (
+            <div className="py-32 text-center space-y-3">
+              <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm font-semibold text-slate-700">正在讀取財務記帳資料...</p>
+              <p className="text-xs text-slate-400">正在連接與初始化資料結構</p>
+            </div>
+          ) : activeTab === 'dashboard' ? (
+            <>
+              {/* Demo Mode Alert Banner */}
+              {dataSource === 'demo' && (
+                <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start sm:items-center space-x-2.5 text-violet-900">
+                    <span className="text-lg leading-none shrink-0">🎭</span>
+                    <p>
+                      <strong className="font-bold">Demo 示範模式：</strong>
+                      目前顯示的是擬真範例資料。請在左側點擊「雲端連線設定」綁定您的 Google 試算表，即可看到即時真實記帳資料。
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsSyncModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-sm shrink-0 transition-colors whitespace-nowrap self-start sm:self-auto"
+                  >
+                    連線 Google 試算表
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsSyncModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-sm shrink-0 transition-colors whitespace-nowrap"
-                >
-                  連線 Google 試算表
-                </button>
+              )}
+
+              {/* Row 1: 4 大核心 KPI 指標卡 (3 淺 + 1 深反差卡) */}
+              <MetricCards
+                monthlySummaries={dynamicMonthlySummaries}
+                transactions={transactions}
+                selectedMonth={filters.selectedMonth}
+              />
+
+              {/* Row 2: 中層雙圖表佈局 (月度收支走勢 7 欄 : 分類甜甜圈 + 垂直佔比 5 欄) */}
+              <ExpenseCharts
+                monthlySummaries={dynamicMonthlySummaries}
+                transactions={transactions}
+                selectedMonth={filters.selectedMonth}
+                selectedCategory={filters.selectedCategory}
+                onCategoryClick={handleCategoryDrillDown}
+                onMonthClick={handleMonthDrillDown}
+              />
+
+              {/* Row 3: 下層雙分欄佈局 (近期交易 7 欄 : 預算進度與生活洞察 5 欄) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 min-w-0">
+                {/* 左側 7 欄：近期交易明細清單 (支援時間/金額排序、大額過濾、關鍵字搜尋) */}
+                <div className="lg:col-span-7 min-w-0">
+                  <TransactionList
+                    transactions={filteredTransactions}
+                    selectedMonth={filters.selectedMonth}
+                    onClearMonth={() => setFilters(prev => ({ ...prev, selectedMonth: 'all' }))}
+                    onDeleteRecord={handleDeleteRecord}
+                    selectedCategory={filters.selectedCategory}
+                    onCategoryChange={(cat) => setFilters(prev => ({ ...prev, selectedCategory: cat }))}
+                    searchQuery={filters.searchQuery}
+                    onSearchChange={(q) => setFilters(prev => ({ ...prev, searchQuery: q }))}
+                    sortBy={filters.sortBy}
+                    onSortChange={(sort) => setFilters(prev => ({ ...prev, sortBy: sort as any }))}
+                    onlyBigExpenses={filters.onlyBigExpenses}
+                    onToggleBigExpenses={() => setFilters(prev => ({ ...prev, onlyBigExpenses: !prev.onlyBigExpenses }))}
+                  />
+                </div>
+
+                {/* 右側 5 欄：類別預算進度條 + 深色生活洞察金句卡 */}
+                <div className="lg:col-span-5 min-w-0">
+                  <BudgetProgressPanel
+                    transactions={transactions}
+                    monthlySummaries={dynamicMonthlySummaries}
+                    selectedMonth={filters.selectedMonth}
+                  />
+                </div>
               </div>
-            )}
-
-            {/* 日常模式 banner when active */}
-            {filters.excludeLargeThreshold !== null && (
-              <div className="bg-slate-900 text-white rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs">
-                <span>
-                  <strong>🛡️ 日常模式已開啟：</strong>
-                  已排除單筆 ≥ NT${filters.excludeLargeThreshold.toLocaleString()} 的大額支出，圖表與指標僅反映日常消費。
-                </span>
-                <button
-                  onClick={() => setFilters(p => ({ ...p, excludeLargeThreshold: null }))}
-                  className="ml-4 text-slate-300 hover:text-white font-bold shrink-0"
-                >✕ 關閉</button>
-              </div>
-            )}
-
-            {/* 1. Metric Cards */}
-            <MetricCards
-              monthlySummaries={dynamicMonthlySummaries}
-              transactions={chartTransactions}
-              selectedMonth={filters.selectedMonth}
-            />
-
-            {/* 2. Burn Rate Card */}
-            <BurnRateCard
-              transactions={chartTransactions}
-              monthlySummaries={dynamicMonthlySummaries}
-            />
-
-            {/* 3. Life Insights */}
-            <InsightsPanel
-              transactions={chartTransactions}
-              monthlySummaries={dynamicMonthlySummaries}
-            />
-
-            {/* 4. Visual Charts — with drill-down */}
-            <ExpenseCharts
-              monthlySummaries={dynamicMonthlySummaries}
-              transactions={chartTransactions}
-              selectedMonth={filters.selectedMonth}
-              selectedCategory={filters.selectedCategory}
-              onCategoryClick={handleCategoryDrillDown}
-              onMonthClick={handleMonthDrillDown}
-            />
-
-            {/* 5. Multi-dimensional Filters */}
-            <FilterBar
-              filters={filters}
-              onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
-              availableMonths={availableMonths}
-              totalFilteredCount={filteredTransactions.length}
-              totalFilteredAmount={totalFilteredAmount}
-            />
-
-            {/* 6. Detailed Transaction List */}
-            <TransactionList
-              transactions={filteredTransactions}
+            </>
+          ) : (
+            /* ── 每月花費分析獨立分頁 ── */
+            <MonthlyBreakdownPage
+              transactions={transactions}
               onDeleteRecord={handleDeleteRecord}
             />
-          </>
-        ) : (
-          /* ── Monthly Breakdown Tab ── */
-          <MonthlyBreakdownPage
-            transactions={chartTransactions}
-            onDeleteRecord={handleDeleteRecord}
-          />
-        )}
-      </main>
+          )}
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-400">
-        <p>個人財務儀表板 · LINE Bot + Google Sheets + React & Tailwind CSS</p>
-      </footer>
+        {/* Minimal Footer with iOS Safe Area */}
+        <footer className="border-t border-[#ECE7DE] bg-white/60 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-slate-400">
+          <p>個人財務管理儀表板 · LINE Bot + Google Sheets + React & Tailwind</p>
+        </footer>
+      </div>
 
       {/* Modals */}
       <SyncModal
@@ -454,12 +394,6 @@ export const App: React.FC = () => {
         config={gasConfig}
         onSave={handleSaveGasConfig}
         onResetToLocal={handleResetToLocal}
-      />
-
-      <AddRecordModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddRecord={handleAddRecord}
       />
     </div>
   );
