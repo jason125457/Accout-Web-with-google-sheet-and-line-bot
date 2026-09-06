@@ -1,8 +1,7 @@
 // Service Worker for Personal Finance Dashboard PWA
-const CACHE_NAME = 'finance-pwa-v1';
+const CACHE_NAME = 'finance-pwa-v2-fintech';
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -10,10 +9,11 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -37,7 +37,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-while-revalidate for local static assets
+  // 1. For HTML / Navigation requests: NETWORK FIRST!
+  // Always fetch the freshest HTML from the server so user never gets stuck on old versions.
+  if (
+    event.request.mode === 'navigate' ||
+    event.request.destination === 'document' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html')
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 2. For hashed static assets (JS, CSS, images): Cache-first with background revalidation
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
