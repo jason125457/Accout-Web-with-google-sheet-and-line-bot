@@ -253,7 +253,7 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-[#FBF9F5] text-slate-900 flex overflow-x-hidden w-full max-w-[100vw] relative">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-3.5 sm:right-5 z-50 animate-bounce-short max-w-[90vw]">
+        <div className="fixed top-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] right-3.5 sm:right-5 z-50 animate-bounce-short max-w-[90vw]">
           <div
             className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center space-x-2 text-xs font-semibold ${
               toastMessage.type === 'success'
@@ -287,7 +287,7 @@ export const App: React.FC = () => {
 
       {/* 2. Right Main Content Area */}
       <div className="flex-1 min-w-0 w-full lg:pl-64 flex flex-col min-h-screen overflow-x-hidden">
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+1.25rem))] pb-6 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
           {/* Top Greeting & Month Selector */}
           <TopGreetingBar
             selectedMonth={filters.selectedMonth}

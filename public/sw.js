@@ -1,5 +1,5 @@
 // Service Worker for Personal Finance Dashboard PWA
-const CACHE_NAME = 'finance-pwa-v2-fintech';
+const CACHE_NAME = 'finance-pwa-v3-safearea';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

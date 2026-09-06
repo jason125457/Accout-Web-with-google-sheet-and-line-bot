@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const content = (
     <div className="flex flex-col h-full bg-[#111A18] text-slate-300 select-none">
       {/* 1. Brand Logo */}
-      <div className="px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-6 flex items-center justify-between border-b border-white/5">
+      <div className="px-6 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+1.25rem))] pb-6 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#E5A93C] to-[#B87C1E] flex items-center justify-center text-[#111A18] shadow-md shadow-black/20">
             <Wallet className="w-5 h-5 stroke-[2.5]" />
