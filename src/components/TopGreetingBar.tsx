@@ -31,7 +31,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
   };
 
   return (
-    <div className="sticky lg:static top-[env(safe-area-inset-top,0px)] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 py-2 lg:pt-0 lg:pb-2 -mx-3.5 px-3.5 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 bg-[#FBF9F5]/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-[#ECE7DE]/70 lg:border-b-0 w-auto lg:w-full min-w-0">
+    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-2 w-full min-w-0">
       {/* Left: Greeting & Subtitle */}
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {/* Mobile Hamburger Button */}
