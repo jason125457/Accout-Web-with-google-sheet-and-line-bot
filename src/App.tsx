@@ -344,7 +344,7 @@ export const App: React.FC = () => {
 
       {/* 2. Right Main Content Area */}
       <div className="flex-1 min-w-0 w-full lg:pl-64 flex flex-col min-h-screen overflow-x-hidden">
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-4 pb-6 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-[max(3rem,env(safe-area-inset-top,0px))] pb-6 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
           {/* Top Greeting & Month Selector */}
           <TopGreetingBar
             selectedMonth={filters.selectedMonth}
