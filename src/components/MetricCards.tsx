@@ -93,13 +93,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       {/* 1. 當月總支出 (含眼睛切換與波浪 Sparkline) */}
       <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden group min-w-0">
         <div>
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold tracking-tight flex items-center gap-1.5 text-slate-600">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 min-h-7 text-slate-500">
+            <span className="min-w-0 whitespace-nowrap text-xs font-bold tracking-tight text-slate-600">
               {isCurrentActiveMonth ? '本月總支出' : `${activeMonth.slice(5)} 月總支出`}
             </span>
             <button
               onClick={() => setHideAmount(prev => !prev)}
-              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+              className="w-7 h-7 -my-1 -mr-1 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors shrink-0"
               title={hideAmount ? '顯示金額' : '隱藏金額'}
               aria-label={hideAmount ? '顯示所有金額' : '隱藏所有金額'}
             >
@@ -161,9 +161,9 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       {/* 2. 半年均線卡 (含垂直迷你柱狀圖 Sparkline) */}
       <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
         <div>
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold text-slate-600">半年平均月支出</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 min-h-7 text-slate-500">
+            <span className="min-w-0 whitespace-nowrap text-xs font-bold tracking-tight text-slate-600">半年平均月支出</span>
+            <span className="hidden sm:inline-flex shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
               基準水位
             </span>
           </div>
@@ -213,10 +213,10 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       {/* 3. 最高單筆卡 */}
       <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
         <div>
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold text-slate-600">最高單筆消費</span>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 min-h-7 text-slate-500">
+            <span className="min-w-0 whitespace-nowrap text-xs font-bold tracking-tight text-slate-600">最高單筆消費</span>
             {maxExpense.category && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/50">
+              <span className="hidden sm:inline-flex shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/50">
                 {maxExpense.category}
               </span>
             )}
