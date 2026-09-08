@@ -1,10 +1,12 @@
-export type TransactionCategory = '生活' | '雜支' | '娛樂' | '家用' | '社交' | string;
+export type TransactionCategory = '生活' | '家用' | '社交' | '娛樂' | '雜支';
+
+export type DataSource = 'cloud' | 'cache' | 'demo' | 'error';
 
 export interface Transaction {
   id: string;
   date: string;       // YYYY-MM-DD
   item: string;       // 項目說明 (e.g. 午餐 粥 豆漿)
-  category: string;   // 類別 (生活、雜支、娛樂、家用、社交...)
+  category: TransactionCategory; // 嚴格限制為五大標準分類
   amount: number;     // 金額
   month: string;      // YYYY-MM
   isCustom?: boolean; // 是否為手動補登

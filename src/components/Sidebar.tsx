@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -7,14 +7,17 @@ import {
   X,
   Wallet
 } from 'lucide-react';
+import { DataSource } from '../types/finance';
 
 interface SidebarProps {
   activeTab: 'dashboard' | 'monthly';
   onSelectTab: (tab: 'dashboard' | 'monthly') => void;
-  dataSource: 'cloud' | 'local' | 'demo';
+  dataSource: DataSource;
   isSyncing: boolean;
   onRefresh: () => void;
   onOpenSyncModal: () => void;
+  lastSyncTime?: string;
+  syncError?: string | null;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -26,9 +29,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isSyncing,
   onRefresh,
   onOpenSyncModal,
+  lastSyncTime,
+  syncError,
   isOpenMobile,
   onCloseMobile,
 }) => {
+  useEffect(() => {
+    if (!isOpenMobile) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseMobile();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpenMobile, onCloseMobile]);
+
+  const statusMeta = {
+    cloud: {
+      label: 'Google 試算表',
+      badge: '已同步',
+      dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]',
+      description: lastSyncTime ? `上次同步：${lastSyncTime}` : '已與 LINE 記帳資料連線',
+    },
+    cache: {
+      label: '快取資料',
+      badge: '非即時',
+      dot: 'bg-amber-400',
+      description: lastSyncTime ? `上次成功：${lastSyncTime}` : '目前顯示上次保存的資料',
+    },
+    error: {
+      label: '同步失敗',
+      badge: '需處理',
+      dot: 'bg-rose-400',
+      description: syncError || '請檢查連線設定',
+    },
+    demo: {
+      label: 'Demo 示範模式',
+      badge: '示範',
+      dot: 'bg-amber-400',
+      description: '目前為擬真假資料，隨時可綁定',
+    },
+  }[dataSource];
+
   const content = (
     <div className="flex flex-col h-full bg-[#111A18] text-slate-300 select-none">
       {/* 1. Brand Logo */}
@@ -51,7 +97,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile close button */}
         <button
           onClick={onCloseMobile}
-          className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
+          className="lg:hidden w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white rounded-xl hover:bg-white/10"
+          aria-label="關閉導覽選單"
         >
           <X className="w-5 h-5" />
         </button>
@@ -123,25 +170,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  dataSource === 'cloud'
-                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]'
-                    : 'bg-amber-400'
-                }`}
+                className={`w-2 h-2 rounded-full ${statusMeta.dot}`}
               />
               <span className="text-xs font-bold text-white">
-                {dataSource === 'cloud' ? 'Google 試算表' : 'Demo 示範模式'}
+                {statusMeta.label}
               </span>
             </div>
             <span className="text-[10px] text-slate-400 font-medium">
-              {dataSource === 'cloud' ? '即時' : '唯讀'}
+              {statusMeta.badge}
             </span>
           </div>
 
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            {dataSource === 'cloud'
-              ? '已與 LINE Bot 記帳庫雙向連線'
-              : '目前為擬真假資料，隨時可綁定'}
+          <p className="text-[11px] text-slate-400 leading-relaxed truncate" title={statusMeta.description}>
+            {statusMeta.description}
           </p>
 
           <button
@@ -150,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
-            <span>{isSyncing ? '同步更新中...' : '即時同步更新'}</span>
+            <span>{isSyncing ? '同步更新中...' : dataSource === 'demo' ? '設定雲端連線' : '重新同步資料'}</span>
           </button>
         </div>
       </div>
@@ -167,11 +208,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Drawer Overlay */}
       {isOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
+          <button
+            type="button"
+            aria-label="關閉導覽選單"
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={onCloseMobile}
           />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full shadow-2xl z-10 animate-slide-right">
+          <div
+            className="relative flex-1 flex flex-col max-w-xs w-full shadow-2xl z-10 animate-slide-right"
+            role="dialog"
+            aria-modal="true"
+            aria-label="主導覽選單"
+          >
             {content}
           </div>
         </div>

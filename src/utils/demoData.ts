@@ -1,4 +1,5 @@
 import { Transaction, MonthlySummary } from '../types/finance';
+import { normalizeCategory } from '../constants/categories';
 
 // ─── Demo Transactions ───────────────────────────────────────────────
 // Fake data for display when no GAS connection is configured.
@@ -13,7 +14,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-09-01', item: '開水與飲料', category: '雜支', amount: 140 },
   // 2026-08
   { date: '2026-08-29', item: '全聯採購', category: '生活', amount: 580 },
-  { date: '2026-08-27', item: '捷運月票', category: '交通', amount: 1280 },
+  { date: '2026-08-27', item: '捷運月票', category: '雜支', amount: 1280 },
   { date: '2026-08-25', item: '電費', category: '家用', amount: 1450 },
   { date: '2026-08-22', item: '朋友聚餐', category: '社交', amount: 960 },
   { date: '2026-08-20', item: '網飛訂閱', category: '娛樂', amount: 390 },
@@ -31,7 +32,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-07-22', item: '電影', category: '娛樂', amount: 280 },
   { date: '2026-07-20', item: '手搖飲', category: '雜支', amount: 80 },
   { date: '2026-07-18', item: '健身房月費', category: '生活', amount: 1000 },
-  { date: '2026-07-15', item: '捷運', category: '交通', amount: 220 },
+  { date: '2026-07-15', item: '捷運', category: '雜支', amount: 220 },
   { date: '2026-07-12', item: '超市生鮮', category: '生活', amount: 640 },
   { date: '2026-07-10', item: 'Amazon購物', category: '雜支', amount: 1350 },
   { date: '2026-07-08', item: '水費', category: '家用', amount: 340 },
@@ -42,7 +43,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-06-25', item: '電費', category: '家用', amount: 1650 },
   { date: '2026-06-22', item: '家庭聚餐', category: '社交', amount: 1200 },
   { date: '2026-06-20', item: '便利商店', category: '雜支', amount: 95 },
-  { date: '2026-06-18', item: '計程車', category: '交通', amount: 320 },
+  { date: '2026-06-18', item: '計程車', category: '雜支', amount: 320 },
   { date: '2026-06-15', item: '書籍', category: '娛樂', amount: 450 },
   { date: '2026-06-12', item: '健身房月費', category: '生活', amount: 1000 },
   { date: '2026-06-08', item: '水費', category: '家用', amount: 310 },
@@ -52,7 +53,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-05-30', item: '全聯採購', category: '生活', amount: 560 },
   { date: '2026-05-28', item: '電費', category: '家用', amount: 1230 },
   { date: '2026-05-25', item: '朋友生日禮物', category: '社交', amount: 800 },
-  { date: '2026-05-22', item: '捷運', category: '交通', amount: 180 },
+  { date: '2026-05-22', item: '捷運', category: '雜支', amount: 180 },
   { date: '2026-05-18', item: '健身房', category: '生活', amount: 1000 },
   { date: '2026-05-15', item: '網飛', category: '娛樂', amount: 390 },
   { date: '2026-05-12', item: '超商', category: '雜支', amount: 135 },
@@ -64,7 +65,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-04-22', item: '同學聚餐', category: '社交', amount: 1100 },
   { date: '2026-04-18', item: '健身房', category: '生活', amount: 1000 },
   { date: '2026-04-15', item: '書', category: '娛樂', amount: 380 },
-  { date: '2026-04-10', item: '計程車', category: '交通', amount: 250 },
+  { date: '2026-04-10', item: '計程車', category: '雜支', amount: 250 },
   { date: '2026-04-05', item: '水費', category: '家用', amount: 280 },
   // 2026-03
   { date: '2026-03-30', item: '全聯', category: '生活', amount: 620 },
@@ -72,7 +73,7 @@ const RAW_DEMO: { date: string; item: string; category: string; amount: number }
   { date: '2026-03-22', item: '家聚', category: '社交', amount: 950 },
   { date: '2026-03-18', item: '健身房', category: '生活', amount: 1000 },
   { date: '2026-03-15', item: 'Spotify', category: '娛樂', amount: 149 },
-  { date: '2026-03-10', item: '捷運', category: '交通', amount: 200 },
+  { date: '2026-03-10', item: '捷運', category: '雜支', amount: 200 },
   { date: '2026-03-05', item: '水費', category: '家用', amount: 300 },
 ];
 
@@ -80,7 +81,7 @@ export const DEMO_TRANSACTIONS: Transaction[] = RAW_DEMO.map((r, i) => ({
   id: `demo-${i}`,
   date: r.date,
   item: r.item,
-  category: r.category,
+  category: normalizeCategory(r.category),
   amount: r.amount,
   month: r.date.slice(0, 7),
 }));

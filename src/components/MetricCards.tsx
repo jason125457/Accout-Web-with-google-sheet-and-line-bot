@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  CircleAlert,
   TrendingDown,
   Zap
 } from 'lucide-react';
@@ -26,7 +27,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
   const sortedSummaries = [...monthlySummaries].sort((a, b) => a.month.localeCompare(b.month));
   const latestSummary = sortedSummaries[sortedSummaries.length - 1];
-  const activeMonth = selectedMonth !== 'all' ? selectedMonth : (latestSummary?.month || '');
+  const activeMonth = selectedMonth || latestSummary?.month || '';
 
   // Current month total
   const currentSummary = sortedSummaries.find(s => s.month === activeMonth);
@@ -50,28 +51,37 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   const sixMonthAvg = calculateSixMonthAverage(sortedSummaries, activeMonth);
 
   // Highest single expense
-  const targetTransactions = selectedMonth === 'all'
-    ? transactions
-    : transactions.filter(t => t.month === selectedMonth);
+  const targetTransactions = transactions.filter(t => t.month === activeMonth);
 
   const maxExpense = targetTransactions.reduce(
     (max, t) => (t.amount > max.amount ? t : max),
-    { amount: 0, item: '無', category: '' }
+    { id: '', amount: 0, item: '無', category: '' }
   );
 
   // Daily burn rate and projected end of month
   const today = new Date();
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const daysPassed = today.getDate();
+  const [activeYear, activeMonthNumber] = activeMonth.split('-').map(Number);
+  const daysInActiveMonth = activeYear && activeMonthNumber
+    ? new Date(activeYear, activeMonthNumber, 0).getDate()
+    : 30;
   const isCurrentActiveMonth = activeMonth === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  
-  const dailyBurn = isCurrentActiveMonth && daysPassed > 0
-    ? Math.round(currentTotal / daysPassed)
-    : Math.round(currentTotal / (daysInMonth || 30));
+
+  const elapsedDays = isCurrentActiveMonth ? today.getDate() : daysInActiveMonth;
+  const dailyBurn = Math.round(currentTotal / Math.max(elapsedDays, 1));
 
   const projectedTotal = isCurrentActiveMonth
-    ? Math.round(dailyBurn * daysInMonth)
+    ? Math.round(dailyBurn * daysInActiveMonth)
     : currentTotal;
+
+  const paceRatio = sixMonthAvg > 0 ? projectedTotal / sixMonthAvg : 0;
+  const paceStatus = paceRatio > 1.1
+    ? { label: '高於基準', tone: 'from-rose-600 via-rose-600 to-orange-600', Icon: CircleAlert }
+    : paceRatio > 0.9
+      ? { label: '接近基準', tone: 'from-amber-500 via-amber-600 to-orange-600', Icon: CircleAlert }
+      : { label: '節奏穩定', tone: 'from-teal-600 via-teal-700 to-emerald-700', Icon: CheckCircle2 };
+
+  const visibleSummaries = sortedSummaries.filter(s => !activeMonth || s.month <= activeMonth).slice(-6);
+  const sparkTransactions = targetTransactions.slice(0, 10);
 
   const formatAmount = (num: number) => {
     if (hideAmount) return '••••••';
@@ -79,18 +89,19 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4 min-w-0">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
       {/* 1. 當月總支出 (含眼睛切換與波浪 Sparkline) */}
-      <div className="fintech-card p-4 sm:p-5 relative flex flex-col justify-between overflow-hidden group min-w-0">
+      <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden group min-w-0">
         <div>
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold tracking-tight flex items-center gap-1.5 text-slate-600">
-              {selectedMonth !== 'all' ? `${activeMonth} 總支出` : '本月總支出'}
+              {isCurrentActiveMonth ? '本月總支出' : `${activeMonth.slice(5)} 月總支出`}
             </span>
             <button
               onClick={() => setHideAmount(prev => !prev)}
               className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
               title={hideAmount ? '顯示金額' : '隱藏金額'}
+              aria-label={hideAmount ? '顯示所有金額' : '隱藏所有金額'}
             >
               {hideAmount ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
@@ -98,7 +109,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
           <div className="mt-2.5 flex items-baseline">
             <span className="text-sm font-bold text-slate-400 mr-1.5">NT$</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
+            <span className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
               {formatAmount(currentTotal)}
             </span>
           </div>
@@ -135,7 +146,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
         {/* 底部迷你 SVG 折線圖 Sparkline */}
         <div className="mt-3 pt-2">
-          <svg className="w-full h-8 text-teal-600/80 overflow-visible" viewBox="0 0 120 28" fill="none">
+          <svg className="w-full h-7 sm:h-8 text-teal-600/80 overflow-visible" viewBox="0 0 120 28" fill="none" aria-hidden="true">
             <path
               d="M0 20 Q 20 8, 40 18 T 80 10 T 120 12"
               stroke="currentColor"
@@ -148,7 +159,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       </div>
 
       {/* 2. 半年均線卡 (含垂直迷你柱狀圖 Sparkline) */}
-      <div className="fintech-card p-4 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
+      <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
         <div>
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold text-slate-600">半年平均月支出</span>
@@ -159,7 +170,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
           <div className="mt-2.5 flex items-baseline">
             <span className="text-sm font-bold text-slate-400 mr-1.5">NT$</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
+            <span className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
               {formatAmount(sixMonthAvg)}
             </span>
           </div>
@@ -181,10 +192,10 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
         {/* 底部垂直迷你柱狀圖 Sparkline */}
         <div className="mt-3 pt-2 flex items-end gap-1.5 h-8">
-          {sortedSummaries.slice(-6).map((s, i) => {
-            const max = Math.max(...sortedSummaries.slice(-6).map(x => x.totalExpense)) || 1;
+          {visibleSummaries.map((s, i) => {
+            const max = Math.max(...visibleSummaries.map(x => x.totalExpense)) || 1;
             const heightPct = Math.round((s.totalExpense / max) * 100);
-            const isLatest = i === sortedSummaries.slice(-6).length - 1;
+            const isLatest = i === visibleSummaries.length - 1;
             return (
               <div
                 key={s.month}
@@ -200,7 +211,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       </div>
 
       {/* 3. 最高單筆卡 */}
-      <div className="fintech-card p-4 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
+      <div className="fintech-card p-3.5 sm:p-5 relative flex flex-col justify-between overflow-hidden min-w-0">
         <div>
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold text-slate-600">最高單筆消費</span>
@@ -213,7 +224,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
           <div className="mt-2.5 flex items-baseline">
             <span className="text-sm font-bold text-slate-400 mr-1.5">NT$</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
+            <span className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
               {formatAmount(maxExpense.amount)}
             </span>
           </div>
@@ -229,20 +240,22 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
         {/* 底部迷你 SVG 琥珀色柱狀 Sparkline */}
         <div className="mt-3 pt-2 flex items-end gap-1.5 h-8">
-          {[30, 45, 60, 40, 95, 50, 65, 35, 70, 55].map((h, i) => (
+          {sparkTransactions.map((transaction) => {
+            const height = maxExpense.amount > 0 ? Math.max(15, (transaction.amount / maxExpense.amount) * 100) : 15;
+            return (
             <div
-              key={i}
+              key={transaction.id}
               className={`flex-1 rounded-sm transition-colors ${
-                i === 4 ? 'bg-amber-500' : 'bg-amber-400/25'
+                transaction.id === maxExpense.id ? 'bg-amber-500' : 'bg-amber-400/25'
               }`}
-              style={{ height: `${h}%` }}
+              style={{ height: `${height}%` }}
             />
-          ))}
+          )})}
         </div>
       </div>
 
       {/* 4. 本月結算推估 / 健康卡 (溫潤暖陽琥珀橘 Fintech 卡) */}
-      <div className="relative rounded-[24px] p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/20 border border-amber-400/40 group transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/30 min-w-0">
+      <div className={`relative rounded-[24px] p-3.5 sm:p-5 flex flex-col justify-between overflow-hidden bg-gradient-to-br ${paceStatus.tone} text-white shadow-lg shadow-slate-900/15 border border-white/20 group transition-all duration-200 hover:shadow-xl min-w-0`}>
         {/* 背景裝飾微光光暈 */}
         <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/15 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-orange-700/30 rounded-full blur-xl pointer-events-none" />
@@ -250,8 +263,8 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-100 flex items-center gap-1.5">
-              <span>月底推估結算</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>{isCurrentActiveMonth ? '月底推估結算' : '當月實際結算'}</span>
+              {isCurrentActiveMonth && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
             </span>
             <div className="w-6 h-6 rounded-full bg-white/20 text-white flex items-center justify-center backdrop-blur-sm shadow-sm">
               <Zap className="w-3.5 h-3.5" />
@@ -260,13 +273,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
           <div className="mt-2.5 flex items-baseline">
             <span className="text-sm font-bold text-amber-200 mr-1.5">NT$</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight tabular-nums drop-shadow-sm">
+            <span className="text-xl sm:text-3xl font-extrabold text-white tracking-tight tabular-nums drop-shadow-sm">
               {formatAmount(projectedTotal)}
             </span>
           </div>
 
           <p className="mt-2 text-[11px] text-amber-100 font-medium leading-relaxed">
-            日均開銷速率：<strong className="text-white font-bold">NT$ {dailyBurn.toLocaleString()}/天</strong>
+            {isCurrentActiveMonth ? '目前日均開銷：' : '實際日均開銷：'}<strong className="text-white font-bold">NT$ {dailyBurn.toLocaleString()}/天</strong>
           </p>
         </div>
 
@@ -274,8 +287,8 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         <div className="relative z-10 mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs">
           <span className="text-amber-100 text-[11px] font-medium">支出節奏狀態</span>
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white font-bold text-xs shadow-sm">
-            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-            <span>健康良好</span>
+            <paceStatus.Icon className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+            <span>{paceStatus.label}</span>
           </div>
         </div>
       </div>

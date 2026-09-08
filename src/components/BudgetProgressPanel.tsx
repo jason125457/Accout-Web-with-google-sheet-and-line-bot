@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { ShoppingBag, Coffee, Car, Film, Sparkles, Quote } from 'lucide-react';
-import { Transaction, MonthlySummary } from '../types/finance';
+import { Transaction, MonthlySummary, TransactionCategory } from '../types/finance';
 import { calculateSixMonthAverage } from '../utils/financeCalculations';
+import { STANDARD_CATEGORIES } from '../constants/categories';
+import { parseFlexibleDate } from '../utils/dateUtils';
 
 interface BudgetProgressPanelProps {
   transactions: Transaction[];
@@ -27,7 +29,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
 }) => {
   // Determine reference month for budget progress (if 'all', default to latest active month)
   const targetMonth = useMemo(() => {
-    if (selectedMonth !== 'all') return selectedMonth;
+    if (selectedMonth) return selectedMonth;
     const allMonths = [...new Set(transactions.map((t) => t.month).filter(Boolean))].sort();
     return allMonths[allMonths.length - 1] || '';
   }, [transactions, selectedMonth]);
@@ -38,7 +40,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
 
   // Compute category totals for the target month
   const categoryTotals = useMemo(() => {
-    const map: Record<string, number> = {
+    const map: Record<TransactionCategory, number> = {
       '生活': 0,
       '家用': 0,
       '社交': 0,
@@ -46,23 +48,18 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
       '雜支': 0,
     };
     targetMonthTxns.forEach((t) => {
-      const cat = t.category || '雜支';
-      if (map[cat] !== undefined) {
-        map[cat] += t.amount;
-      } else {
-        map['雜支'] += t.amount;
-      }
+      map[t.category] += t.amount;
     });
     return map;
   }, [targetMonthTxns]);
 
   // Six month average baseline
   const sixMonthAvg = useMemo(() => {
-    return calculateSixMonthAverage(monthlySummaries);
-  }, [monthlySummaries]);
+    return calculateSixMonthAverage(monthlySummaries, targetMonth);
+  }, [monthlySummaries, targetMonth]);
 
   // Define dynamic monthly budgets based on proportion of 6-month average
-  const categoryBudgets: Record<string, number> = useMemo(() => {
+  const categoryBudgets: Record<TransactionCategory, number> = useMemo(() => {
     const base = sixMonthAvg > 0 ? sixMonthAvg : 20000;
     return {
       '生活': Math.round(base * 0.45),
@@ -78,7 +75,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
     let weekendTotal = 0;
     let weekdayTotal = 0;
     targetMonthTxns.forEach((t) => {
-      const day = new Date(t.date).getDay();
+      const day = parseFlexibleDate(t.date)?.getDay();
       if (day === 0 || day === 6) {
         weekendTotal += t.amount;
       } else {
@@ -101,7 +98,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
           <div className="flex items-center gap-2">
             <h3 className="text-base font-extrabold text-slate-900 tracking-tight">類別支出進度</h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-              vs 預期水位
+              近半年分配參考
             </span>
           </div>
           <span className="text-xs font-semibold text-slate-500 font-medium">
@@ -111,11 +108,13 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
 
         {/* Progress Bars List */}
         <div className="space-y-4">
-          {Object.entries(categoryTotals).map(([cat, spent]) => {
+          {STANDARD_CATEGORIES.map((cat) => {
+            const spent = categoryTotals[cat];
             const meta = CATEGORY_META[cat] || CATEGORY_META['生活'];
             const Icon = meta.icon;
-            const budget = categoryBudgets[cat] || 5000;
-            const pct = Math.min(Math.round((spent / budget) * 100), 100);
+            const budget = categoryBudgets[cat];
+            const rawPct = Math.round((spent / budget) * 100);
+            const barPct = Math.min(rawPct, 100);
             const isOver = spent > budget;
 
             return (
@@ -130,14 +129,14 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
 
                   <div className="flex items-center gap-1.5 sm:gap-2 tabular-nums shrink-0">
                     <span className="text-slate-500 text-[10px] sm:text-[11px] font-medium">
-                      ${Math.round(spent).toLocaleString()} / ${budget.toLocaleString()}
+                      NT$ {Math.round(spent).toLocaleString()} / {budget.toLocaleString()}
                     </span>
                     <span
                       className={`text-[10px] sm:text-[11px] font-extrabold min-w-[28px] sm:min-w-[32px] text-right ${
                         isOver ? 'text-rose-600' : 'text-slate-700'
                       }`}
                     >
-                      {pct}%
+                      {rawPct}%
                     </span>
                   </div>
                 </div>
@@ -148,7 +147,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
                     className={`h-full rounded-full transition-all duration-500 ${
                       isOver ? 'bg-rose-500' : meta.barColor
                     }`}
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${barPct}%` }}
                   />
                 </div>
               </div>

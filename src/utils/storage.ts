@@ -1,8 +1,9 @@
 import { GasConfig, Transaction, MonthlySummary } from '../types/finance';
 import { formatDate } from './dateUtils';
+import { normalizeCategory } from '../constants/categories';
 
 // Bump this when the data schema changes to auto-clear stale cached data
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 
 const KEYS = {
   GAS_CONFIG: 'finance_dashboard_gas_config',
@@ -48,7 +49,7 @@ export const getCustomTransactions = (): Transaction[] => {
       return records.map(r => ({
         ...r,
         date: formatDate(r.date),
-        category: r.category === '生存' ? '生活' : r.category
+        category: normalizeCategory(r.category)
       }));
     }
   } catch (e) {
@@ -86,7 +87,7 @@ export const getCachedData = (): { details: Transaction[]; summary: MonthlySumma
         data.details = data.details.map((d: Transaction) => ({
           ...d,
           date: formatDate(d.date),
-          category: d.category === '生存' ? '生活' : d.category
+          category: normalizeCategory(d.category)
         }));
       }
       return data;

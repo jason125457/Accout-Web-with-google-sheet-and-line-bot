@@ -1,5 +1,6 @@
 import { Transaction, MonthlySummary } from '../types/finance';
 import { formatDate, compareTransactionDates } from './dateUtils';
+import { normalizeCategory } from '../constants/categories';
 
 /**
  * Converts any month-like raw value to a clean "YYYY-MM" string.
@@ -72,8 +73,7 @@ export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
       const rawDate = String(row[dateIdx >= 0 ? dateIdx : 0] || '');
       const formattedDate = formatDate(rawDate);
       const item = String(row[itemIdx >= 0 ? itemIdx : 1] || '').trim();
-      const rawCat = String(row[catIdx >= 0 ? catIdx : 2] || '生活').trim();
-      const category = rawCat === '生存' ? '生活' : (rawCat || '生活');
+      const category = normalizeCategory(row[catIdx >= 0 ? catIdx : 2]);
       const rawAmt = parseFloat(String(row[amtIdx >= 0 ? amtIdx : 3] || '0'));
       const amount = isNaN(rawAmt) ? 0 : rawAmt;
       let month = normalizeMonthString(row[monthIdx >= 0 ? monthIdx : 4]);
@@ -96,8 +96,7 @@ export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
       const rawDate = row['時間'] || row['日期'] || row['date'] || '';
       const formattedDate = formatDate(rawDate);
       const item = String(row['項目'] || row['說明'] || row['item'] || '').trim();
-      const rawCat = String(row['類別'] || row['category'] || '生活').trim();
-      const category = rawCat === '生存' ? '生活' : (rawCat || '生活');
+      const category = normalizeCategory(row['類別'] || row['category']);
       const rawAmt = parseFloat(String(row['金額'] || row['amount'] || '0'));
       const amount = isNaN(rawAmt) ? 0 : rawAmt;
       let month = normalizeMonthString(row['月份'] || row['month'] || '');
@@ -166,6 +165,9 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
     return { success: false, message: '請輸入 Google Apps Script 網頁應用程式 URL' };
   }
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
   try {
     const cleanUrl = webAppUrl.trim();
     const urlObj = new URL(cleanUrl);
@@ -178,7 +180,8 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
       redirect: 'follow',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
 
     if (!response.ok) {
@@ -205,9 +208,14 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
     };
   } catch (error: any) {
     console.error('GAS fetch error:', error);
+    if (error?.name === 'AbortError') {
+      return { success: false, message: '連線逾時，請確認網路或稍後再試。' };
+    }
     return {
       success: false,
       message: `連線失敗: ${error.message || '請確認網路狀態及網址是否正確'}`
     };
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }

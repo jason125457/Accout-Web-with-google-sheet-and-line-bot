@@ -13,6 +13,7 @@ import {
   Flame
 } from 'lucide-react';
 import { Transaction } from '../types/finance';
+import { STANDARD_CATEGORIES } from '../constants/categories';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -43,7 +44,7 @@ const CATEGORY_ICONS: Record<
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   onDeleteRecord,
-  selectedMonth = 'all',
+  selectedMonth = '',
   onClearMonth,
   selectedCategory = 'all',
   onCategoryChange,
@@ -55,7 +56,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onToggleBigExpenses,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(() => window.matchMedia('(max-width: 639px)').matches ? 6 : 10);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)');
+    const updatePageSize = () => setPageSize(media.matches ? 6 : 10);
+    updatePageSize();
+    media.addEventListener('change', updatePageSize);
+    return () => media.removeEventListener('change', updatePageSize);
+  }, []);
 
   // Whenever filters change (e.g. chart month clicked), reset to first page
   useEffect(() => {
@@ -81,7 +90,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             </h3>
 
             {/* Active Month Filter Pill with Reset Button */}
-            {selectedMonth && selectedMonth !== 'all' && (
+            {selectedMonth && (
               <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-xs font-bold animate-fade-in shrink-0">
                 <span>📅 {selectedMonth}</span>
                 {onClearMonth && (
@@ -117,7 +126,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           {onToggleBigExpenses && (
             <button
               onClick={onToggleBigExpenses}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+              className={`min-h-11 sm:min-h-0 px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
                 onlyBigExpenses
                   ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/80'
@@ -144,6 +153,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   setCurrentPage(1);
                 }}
                 placeholder="搜尋項目名稱或金額..."
+                aria-label="搜尋交易項目、類別或金額"
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-slate-300 transition-all"
               />
             </div>
@@ -158,14 +168,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   onCategoryChange(e.target.value);
                   setCurrentPage(1);
                 }}
+                aria-label="篩選交易類別"
                 className="flex-1 sm:flex-none px-2.5 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors truncate"
               >
                 <option value="all">全部類別</option>
-                <option value="生活">生活</option>
-                <option value="家用">家用</option>
-                <option value="社交">社交</option>
-                <option value="娛樂">娛樂</option>
-                <option value="雜支">雜支</option>
+                {STANDARD_CATEGORIES.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
               </select>
             )}
 
@@ -178,6 +187,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     onSortChange(e.target.value);
                     setCurrentPage(1);
                   }}
+                  aria-label="交易排序方式"
                   className="w-full pl-7 pr-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors truncate"
                 >
                   <option value="date-desc">時間：新至舊</option>
@@ -260,6 +270,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       onClick={() => onDeleteRecord(t.id)}
                       className="p-1.5 text-slate-300 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                       title="刪除手動記帳"
+                      aria-label={`刪除手動記帳：${t.item}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -271,7 +282,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         ) : (
           <div className="py-12 text-center text-xs text-slate-400 font-medium space-y-2">
             <p>查無相符的記帳明細</p>
-            {(selectedMonth !== 'all' || selectedCategory !== 'all' || onlyBigExpenses || searchQuery) && (
+            {(selectedCategory !== 'all' || onlyBigExpenses || searchQuery) && (
               <button
                 onClick={() => {
                   onClearMonth?.();
@@ -298,14 +309,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentSafePage === 1}
-              className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+              className="min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors flex items-center justify-center"
+              aria-label="上一頁"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentSafePage === totalPages}
-              className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+              className="min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors flex items-center justify-center"
+              aria-label="下一頁"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>

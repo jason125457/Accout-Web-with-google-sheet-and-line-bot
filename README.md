@@ -1,7 +1,7 @@
 # 💎 個人財務視覺化儀表板 (Personal Finance Dashboard)
 
 > 基於 **React 18 + TypeScript + Tailwind CSS + Vite** 打造的現代 Fintech 風格個人財務儀表板。  
-> 支援即時連線 **Google 試算表 (LINE Bot 記帳數據)**，自帶 **Demo 示範模式**，並支援透過 **Cloudflare Pages** 免費全球 CDN 部署。
+> 支援同步連線 **Google 試算表 (LINE Bot 記帳數據)**，自帶 **Demo 示範模式**，並支援透過 **Cloudflare Pages** 免費全球 CDN 部署。
 
 [![Deploy with Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?style=flat&logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
 [![React 18](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
@@ -16,11 +16,12 @@
 
 - 🏛️ **Revolut & Stripe 頂級金融美學**：極簡白底搭配翡翠綠（Teal）與冷靛藍（Indigo）重音，高呼吸感、1px 髮絲邊框與 Authoritative 數據層次。
 - 🎭 **內建 Demo 示範模式**：初次進入或分享給朋友時，預設顯示完整的擬真消費資料，保護隱私不外洩真實帳目。
-- ☁️ **Google 試算表安全即時連線**：
-  - 透過 Google Apps Script `doGet` 安全 API 即時讀取 LINE Bot 記帳明細與月度彙總。
-  - 金鑰與 Web App URL 僅儲存於使用者本地瀏覽器（`localStorage`），零伺服器外流風險。
+- ☁️ **Google 試算表安全同步連線**：
+  - 透過 Google Apps Script `doGet` API 讀取 LINE Bot 記帳明細與月度彙總。
+  - 金鑰與 Web App URL 僅儲存於使用者本地瀏覽器（`localStorage`），連線時只傳送到使用者指定的 GAS。
+  - 清楚區分「已同步、快取資料、同步失敗、Demo」四種資料狀態，避免把舊快取誤認為最新資料。
 - 📊 **月度支出走勢（雙視圖自由切換）**：
-  - **柱狀分佈 (Bar)**：頂部圓角柱體，將「當月進行中」以專屬樣式獨立呈現，避免折線圖產生斷崖失真感。
+  - **柱狀分佈 (Bar，預設)**：頂部圓角柱體，將「當月進行中」以專屬樣式獨立呈現，避免折線圖產生斷崖失真感。
   - **平滑趨勢 (Area)**：張力校正的自然平滑曲線與微光漸層。
 - 🍩 **消費類別分佈甜甜圈圖**：
   - 懸浮 Glassmorphism 數據卡片。
@@ -30,12 +31,12 @@
   - 月份摘要卡片 Grid（各月總額 + 前三大開銷類別小進度條）。
 - ⏱️ **本月消費進度感知 (Burn Rate)**：
   - 顯示當月已過天數百分比、日均開銷速度（NT$/天）與月底推估結算額。
-  - 自動對比「近半年平均生活水準」，超標時自動以橘/紅溫和提醒。
+  - 選擇歷史月份時自動切換為「實際結算／實際日均」，不再顯示錯誤推估。
+  - 自動對比該月份之前的近半年平均生活水準，超標時以橘/紅提醒。
 - 💡 **生活消費純演算洞察**：
   - 不耗費 AI API，前端純演算法自動推算「週末 vs 平日開銷比」、「最花錢的一天」與「類別月增減變化」。
-- 🛡️ **日常模式開關**：
-  - 一鍵排除單筆 ≥ NT$5,000 的非固定大額支出（如保費、出國、買 3C），還原純粹的三餐生活現金流。
-- 📱 **手機版 RWD 完美適配**：響應式精簡 Header、自動吸頂 Tab 導覽，手機操作流暢不跑版。
+- 🧭 **一致的月份分析範圍**：總支出、最高單筆、分類、交易明細與參考水位使用同一個明確月份；趨勢圖範圍獨立切換。
+- 📱 **手機版 RWD 適配**：2×2 精簡 KPI、吸頂導覽、較大的觸控區，以及月份明細就地展開。
 
 ---
 
@@ -44,19 +45,18 @@
 ```text
 account_web/
 ├── public/
-│   └── _redirects             # Cloudflare Pages SPA 路由跳轉設定
+│   ├── manifest.json          # PWA 設定
+│   └── sw.js                  # Network-first Service Worker
 ├── src/
 │   ├── components/
-│   │   ├── Header.tsx         # 頂部導覽、連線燈號與記一筆按鈕
+│   │   ├── Sidebar.tsx        # 桌機側欄與手機抽屜導覽
+│   │   ├── TopGreetingBar.tsx # 吸頂工具列與分析月份選擇
 │   │   ├── MetricCards.tsx    # 4 大金融核心指標卡
-│   │   ├── BurnRateCard.tsx   # 本月進度條、日均花費與月底預估
-│   │   ├── InsightsPanel.tsx  # 消費生活自動分析洞察
 │   │   ├── ExpenseCharts.tsx  # 柱狀/走勢圖 + 類別分佈甜甜圈圖 (可 Drill-down)
-│   │   ├── FilterBar.tsx      # 多維度搜尋、月份選單與日常模式開關
 │   │   ├── TransactionList.tsx# 記帳明細列表與分頁
 │   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁面 (堆疊柱狀圖)
 │   │   ├── SyncModal.tsx      # Google Apps Script 連線設定彈窗
-│   │   └── AddRecordModal.tsx # 本地手動記一筆彈窗
+│   │   └── BudgetProgressPanel.tsx # 類別參考水位與生活洞察
 │   ├── types/
 │   │   └── finance.ts         # TypeScript 核心資料介面定義
 │   ├── utils/
@@ -117,7 +117,7 @@ npm run build
 
 ## 🔒 隱私與安全性 (Security & Privacy)
 
-1. **零資料上傳**：本專案為純前端（Client-side SPA），你的任何記帳資料、試算表內容均**不會**儲存在 Cloudflare 或任何第三方伺服器。
+1. **不在本站保存帳務**：本專案為純前端 SPA；帳務由瀏覽器向使用者指定的 Google Apps Script 讀取，Cloudflare Pages 不保存帳務內容。
 2. **私密資料隔離**：本專案已在 `.gitignore` 中嚴格排除 `*.xlsx`、`*.csv` 與敏感檔案，絕不會將個人財務明細誤推至 GitHub 公開倉庫。
 3. **金鑰本地化**：Google Apps Script 的 `API_SECRET_TOKEN` 與 Web App 網址僅儲存於使用者個人的手機/電腦 `localStorage` 中。
 

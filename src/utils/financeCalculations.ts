@@ -49,30 +49,24 @@ export function calculateDynamicMonthlySummaries(
 
 /**
  * Calculates the standard 6-month average baseline expense.
- * In accordance with AGENTS.md rules, if the latest month in data is the currently
- * ongoing/incomplete month, it is excluded so that a month with only a few days of
- * expenses does not pull down the overall lifestyle baseline.
+ * Calculates the average of up to six completed months before the reference month.
+ * This keeps the selected month (and any future records) out of its own comparison
+ * baseline, which is essential for both ongoing and historical analysis.
  */
 export function calculateSixMonthAverage(
   summaries: MonthlySummary[],
-  currentMonthStr: string = getCurrentMonthString()
+  referenceMonthStr: string = getCurrentMonthString()
 ): number {
   if (!summaries || summaries.length === 0) return 0;
 
   const sorted = [...summaries].sort((a, b) => a.month.localeCompare(b.month));
-  const latestMonth = sorted[sorted.length - 1]?.month;
-  const isLatestOngoing = latestMonth === currentMonthStr;
-
-  // Exclude ongoing month if it's the latest month in the dataset
-  const completedMonths = isLatestOngoing
-    ? sorted.filter(s => s.month < currentMonthStr)
-    : sorted;
-
-  const targetMonths = completedMonths.slice(-6);
+  const targetMonths = sorted
+    .filter(s => s.month < referenceMonthStr)
+    .slice(-6);
 
   if (targetMonths.length === 0) {
-    // If only the ongoing month exists, fall back to it
-    return sorted.length > 0 ? Math.round(sorted[sorted.length - 1].totalExpense) : 0;
+    const referenceSummary = sorted.find(s => s.month === referenceMonthStr);
+    return referenceSummary ? Math.round(referenceSummary.totalExpense) : 0;
   }
 
   const sum = targetMonths.reduce((acc, cur) => acc + cur.totalExpense, 0);

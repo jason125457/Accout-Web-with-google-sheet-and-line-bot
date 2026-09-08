@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, ShieldCheck, Link2, Key, CheckCircle2, AlertCircle, Loader2, RotateCcw } from 'lucide-react';
 import { GasConfig } from '../types/finance';
 import { fetchFromGas } from '../utils/gasApi';
@@ -23,6 +23,52 @@ export const SyncModal: React.FC<SyncModalProps> = ({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setUrl(config.webAppUrl || '');
+    setToken(config.secretToken || '');
+    setTestResult(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -67,11 +113,19 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] bg-slate-900/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 relative my-auto">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sync-modal-title"
+        className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-5 relative my-auto"
+      >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+          ref={closeButtonRef}
+          className="absolute right-4 top-4 w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+          aria-label="關閉連線設定"
         >
           <X className="w-5 h-5" />
         </button>
@@ -82,9 +136,9 @@ export const SyncModal: React.FC<SyncModalProps> = ({
             <Link2 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800">Google 試算表即時連線設定</h3>
+            <h3 id="sync-modal-title" className="text-lg font-bold text-slate-800 pr-10">Google 試算表連線設定</h3>
             <p className="text-xs text-slate-500">
-              連線至您的 Google Apps Script Web App，即時同步 LINE Bot 記帳數據
+              連線至您的 Google Apps Script Web App，載入 LINE Bot 記帳資料
             </p>
           </div>
         </div>
@@ -105,6 +159,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({
                 setTestResult(null);
               }}
               placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+              autoComplete="off"
+              spellCheck={false}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-xs font-mono transition-all placeholder:text-slate-400"
             />
           </div>
@@ -123,6 +179,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({
                 setTestResult(null);
               }}
               placeholder="您在「指令碼屬性」設定的暗號密碼"
+              autoComplete="off"
+              spellCheck={false}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-xs font-mono transition-all placeholder:text-slate-400"
             />
           </div>
@@ -133,7 +191,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
               type="button"
               onClick={handleTestConnection}
               disabled={isTesting || !url.trim()}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors disabled:opacity-50"
+              className="inline-flex items-center space-x-1.5 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors disabled:opacity-50"
             >
               {isTesting ? (
                 <>
@@ -171,30 +229,30 @@ export const SyncModal: React.FC<SyncModalProps> = ({
           <div className="p-3 bg-teal-50/60 rounded-xl border border-teal-100 flex items-start space-x-2 text-[11px] text-teal-800 leading-relaxed">
             <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
             <p>
-              <strong>隱私保證：</strong>網址與金鑰僅保存在您本機的瀏覽器內部 (localStorage)，全程透過 HTTPS 直連 Google 伺服器，絕不上傳至任何第三方。
+              <strong>資料說明：</strong>網址與金鑰只保存在這台裝置的瀏覽器，連線時會透過 HTTPS 傳送到您指定的 Google Apps Script，不會儲存在本站伺服器。
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
           <button
             type="button"
             onClick={() => {
               onResetToLocal();
               onClose();
             }}
-            className="text-xs text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1"
+            className="min-h-11 sm:min-h-0 text-xs text-slate-500 hover:text-slate-800 font-medium flex items-center justify-center sm:justify-start gap-1"
           >
             <RotateCcw className="w-3 h-3" />
-            切換回本機資料
+            切換回 Demo 示範資料
           </button>
 
-          <div className="flex items-center space-x-2">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              className="min-h-11 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
             >
               取消
             </button>
@@ -202,7 +260,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
               type="button"
               onClick={handleSaveAndSync}
               disabled={isSaving || !url.trim()}
-              className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-sm transition-all disabled:opacity-50"
+              className="min-h-11 px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-sm transition-all disabled:opacity-50"
             >
               {isSaving ? '同步儲存中...' : '儲存並同步'}
             </button>

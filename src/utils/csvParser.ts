@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { Transaction, MonthlySummary } from '../types/finance';
 import { formatDate, compareTransactionDates } from './dateUtils';
+import { normalizeCategory } from '../constants/categories';
 
 export { formatDate };
 
@@ -26,8 +27,7 @@ export async function parseTransactionsCSV(csvText: string): Promise<Transaction
           const rawDate = row[dateKey] || '';
           const formattedDate = formatDate(rawDate);
           const item = (row[itemKey] || '').trim();
-          const rawCat = (row[catKey] || '雜支').trim();
-          const category = rawCat === '生存' ? '生活' : rawCat;
+          const category = normalizeCategory(row[catKey]);
           const rawAmount = parseFloat(String(row[amountKey] || '0').replace(/,/g, ''));
           const amount = isNaN(rawAmount) ? 0 : rawAmount;
           

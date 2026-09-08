@@ -7,10 +7,10 @@ import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
 import { MonthlyBreakdownPage } from './components/MonthlyBreakdownPage';
 import { SyncModal } from './components/SyncModal';
-import { Transaction, MonthlySummary, GasConfig, FilterState } from './types/finance';
+import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource } from './types/finance';
 import { fetchFromGas, normalizeMonthString } from './utils/gasApi';
 import { DEMO_TRANSACTIONS, DEMO_SUMMARIES } from './utils/demoData';
-import { calculateDynamicMonthlySummaries } from './utils/financeCalculations';
+import { calculateDynamicMonthlySummaries, getCurrentMonthString } from './utils/financeCalculations';
 import { compareTransactionDates } from './utils/dateUtils';
 import {
   getGasConfig,
@@ -26,7 +26,8 @@ export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [monthlySummaries, setMonthlySummaries] = useState<MonthlySummary[]>([]);
   const [gasConfig, setGasConfig] = useState<GasConfig>(getGasConfig());
-  const [dataSource, setDataSource] = useState<'cloud' | 'local' | 'demo'>('demo');
+  const [dataSource, setDataSource] = useState<DataSource>('demo');
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'warn' | 'error'; text: string } | null>(null);
@@ -42,7 +43,7 @@ export const App: React.FC = () => {
 
   // Filters & Sorting state
   const [filters, setFilters] = useState<FilterState>({
-    selectedMonth: 'all',
+    selectedMonth: '',
     selectedCategory: 'all',
     searchQuery: '',
     onlyBigExpenses: false,
@@ -61,7 +62,7 @@ export const App: React.FC = () => {
   const handleMonthDrillDown = (month: string) => {
     setFilters(prev => ({
       ...prev,
-      selectedMonth: prev.selectedMonth === month ? 'all' : month
+      selectedMonth: month
     }));
   };
 
@@ -73,11 +74,29 @@ export const App: React.FC = () => {
     toastTimerRef.current = setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const selectDefaultMonth = (details: Transaction[], summaries: MonthlySummary[]) => {
+    const months = new Set<string>();
+    details.forEach(item => item.month && months.add(item.month));
+    summaries.forEach(item => item.month && months.add(item.month));
+    const sortedMonths = Array.from(months).sort((a, b) => b.localeCompare(a));
+    if (sortedMonths.length === 0) return;
+    setFilters(prev => {
+      if (sortedMonths.includes(prev.selectedMonth)) return prev;
+      const currentMonth = getCurrentMonthString();
+      return {
+        ...prev,
+        selectedMonth: sortedMonths.includes(currentMonth) ? currentMonth : sortedMonths[0],
+      };
+    });
+  };
+
   // Load demo data
   const loadDemoData = () => {
     const customRecords = getCustomTransactions();
-    setTransactions([...customRecords, ...DEMO_TRANSACTIONS]);
+    const details = [...customRecords, ...DEMO_TRANSACTIONS];
+    setTransactions(details);
     setMonthlySummaries(DEMO_SUMMARIES);
+    selectDefaultMonth(details, DEMO_SUMMARIES);
     setDataSource('demo');
   };
 
@@ -86,19 +105,27 @@ export const App: React.FC = () => {
     const initData = async () => {
       setIsLoading(true);
       const savedConfig = getGasConfig();
+      let initialSyncError: string | null = null;
 
       if (savedConfig.webAppUrl) {
         const res = await fetchFromGas(savedConfig.webAppUrl, savedConfig.secretToken);
         if (res.success && res.details && res.summary) {
           const customRecords = getCustomTransactions();
-          setTransactions([...customRecords, ...res.details]);
+          const details = [...customRecords, ...res.details];
+          setTransactions(details);
           setMonthlySummaries(res.summary);
+          selectDefaultMonth(details, res.summary);
           setDataSource('cloud');
+          setSyncError(null);
           saveCachedData({ details: res.details, summary: res.summary });
-          showToast('success', `已連線 Google 雲端！成功載入 ${res.details.length} 筆即時帳目。`);
+          const updatedConfig = { ...savedConfig, lastSyncTime: new Date().toLocaleString('zh-TW') };
+          setGasConfig(updatedConfig);
+          saveGasConfig(updatedConfig);
+          showToast('success', `已連線 Google 雲端！成功載入 ${res.details.length} 筆最新帳目。`);
           setIsLoading(false);
           return;
         }
+        initialSyncError = res.message || '無法連線 Google 試算表。';
       }
 
       // If cloud fetch failed, load cache or demo
@@ -113,11 +140,18 @@ export const App: React.FC = () => {
           ...s,
           month: normalizeMonthString(s.month)
         })).filter(s => /^\d{4}-\d{2}$/.test(s.month));
-        setTransactions([...customRecords, ...cleanDetails]);
+        const details = [...customRecords, ...cleanDetails];
+        setTransactions(details);
         setMonthlySummaries(cleanSummary);
-        setDataSource('cloud');
+        selectDefaultMonth(details, cleanSummary);
+        setDataSource('cache');
+        setSyncError(initialSyncError || '目前顯示上次成功同步的快取資料。');
       } else {
         loadDemoData();
+        if (initialSyncError) {
+          setDataSource('error');
+          setSyncError(initialSyncError);
+        }
       }
       setIsLoading(false);
     };
@@ -138,9 +172,12 @@ export const App: React.FC = () => {
 
     if (res.success && res.details && res.summary) {
       const customRecords = getCustomTransactions();
-      setTransactions([...customRecords, ...res.details]);
+      const details = [...customRecords, ...res.details];
+      setTransactions(details);
       setMonthlySummaries(res.summary);
+      selectDefaultMonth(details, res.summary);
       setDataSource('cloud');
+      setSyncError(null);
       const nowStr = new Date().toLocaleString('zh-TW');
       const updatedConfig = { ...gasConfig, lastSyncTime: nowStr };
       setGasConfig(updatedConfig);
@@ -148,7 +185,10 @@ export const App: React.FC = () => {
       saveCachedData({ details: res.details, summary: res.summary });
       showToast('success', `同步成功！已由 Google 雲端更新至最新資料 (${nowStr})。`);
     } else {
-      showToast('error', res.message || '連線 Google 失敗，請確認 Apps Script 部署。');
+      const message = res.message || '連線 Google 失敗，請確認 Apps Script 部署。';
+      setSyncError(message);
+      setDataSource(dataSource === 'demo' ? 'error' : 'cache');
+      showToast('error', message);
     }
   };
 
@@ -160,14 +200,17 @@ export const App: React.FC = () => {
 
     if (res.success && res.details && res.summary) {
       const customRecords = getCustomTransactions();
-      setTransactions([...customRecords, ...res.details]);
+      const details = [...customRecords, ...res.details];
+      setTransactions(details);
       setMonthlySummaries(res.summary);
+      selectDefaultMonth(details, res.summary);
       setDataSource('cloud');
+      setSyncError(null);
       const updated = { ...newConfig, lastSyncTime: new Date().toLocaleString('zh-TW') };
       setGasConfig(updated);
       saveGasConfig(updated);
       saveCachedData({ details: res.details, summary: res.summary });
-      showToast('success', 'Google 試算表連線成功！已切換為雲端即時同步。');
+      showToast('success', 'Google 試算表連線成功！已載入最新雲端資料。');
       return true;
     } else {
       showToast('error', res.message || '連線失敗，請檢查網址與 Token。');
@@ -181,6 +224,7 @@ export const App: React.FC = () => {
     setGasConfig(emptyConfig);
     saveGasConfig(emptyConfig);
     loadDemoData();
+    setSyncError(null);
     showToast('warn', '已中斷 Google 連線，切換回 Demo 示範模式。');
   };
 
@@ -207,10 +251,21 @@ export const App: React.FC = () => {
     return Array.from(monthSet).sort((a, b) => b.localeCompare(a));
   }, [transactions, monthlySummaries]);
 
+  // The dashboard always has one explicit analysis month. Trend range is controlled separately.
+  useEffect(() => {
+    if (availableMonths.length === 0) return;
+    setFilters(prev => {
+      if (availableMonths.includes(prev.selectedMonth)) return prev;
+      const currentMonth = getCurrentMonthString();
+      const fallbackMonth = availableMonths.includes(currentMonth) ? currentMonth : availableMonths[0];
+      return { ...prev, selectedMonth: fallbackMonth };
+    });
+  }, [availableMonths]);
+
   // Filtered transactions for list view (supporting keyword, category, big expenses, and sorting)
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      if (filters.selectedMonth !== 'all' && t.month !== filters.selectedMonth) {
+      if (filters.selectedMonth && t.month !== filters.selectedMonth) {
         return false;
       }
       if (filters.selectedCategory !== 'all' && t.category !== filters.selectedCategory) {
@@ -281,6 +336,8 @@ export const App: React.FC = () => {
         isSyncing={isSyncing}
         onRefresh={handleRefresh}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        lastSyncTime={gasConfig.lastSyncTime}
+        syncError={syncError}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
@@ -296,6 +353,7 @@ export const App: React.FC = () => {
             onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
             isSyncing={isSyncing}
             onRefresh={handleRefresh}
+            showMonthSelector={activeTab === 'dashboard'}
           />
 
           {isLoading ? (
@@ -313,7 +371,7 @@ export const App: React.FC = () => {
                     <span className="text-lg leading-none shrink-0">🎭</span>
                     <p>
                       <strong className="font-bold">Demo 示範模式：</strong>
-                      目前顯示的是擬真範例資料。請在左側點擊「雲端連線設定」綁定您的 Google 試算表，即可看到即時真實記帳資料。
+                      目前顯示的是擬真範例資料。請在左側點擊「雲端連線設定」綁定您的 Google 試算表，即可查看最新記帳資料。
                     </p>
                   </div>
                   <button
@@ -321,6 +379,34 @@ export const App: React.FC = () => {
                     className="px-3.5 py-1.5 rounded-xl font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-sm shrink-0 transition-colors whitespace-nowrap self-start sm:self-auto"
                   >
                     連線 Google 試算表
+                  </button>
+                </div>
+              )}
+
+              {(dataSource === 'cache' || dataSource === 'error') && (
+                <div className={`rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border ${
+                  dataSource === 'cache'
+                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                }`} role="status">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                    <div>
+                      <p className="font-bold">
+                        {dataSource === 'cache' ? '目前顯示上次同步資料' : 'Google 試算表連線失敗'}
+                      </p>
+                      <p className="mt-0.5 opacity-80">
+                        {syncError || '資料可能不是最新，請重新同步。'}
+                        {gasConfig.lastSyncTime ? ` 上次成功同步：${gasConfig.lastSyncTime}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isSyncing}
+                    className="min-h-11 sm:min-h-0 px-3.5 py-2 rounded-xl font-bold bg-white/80 hover:bg-white border border-current/10 shrink-0 disabled:opacity-50"
+                  >
+                    {isSyncing ? '重新連線中…' : '重新同步'}
                   </button>
                 </div>
               )}
@@ -343,13 +429,12 @@ export const App: React.FC = () => {
               />
 
               {/* Row 3: 下層雙分欄佈局 (近期交易 7 欄 : 預算進度與生活洞察 5 欄) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 min-w-0">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 min-w-0">
                 {/* 左側 7 欄：近期交易明細清單 (支援時間/金額排序、大額過濾、關鍵字搜尋) */}
-                <div className="lg:col-span-7 min-w-0">
+                <div className="xl:col-span-7 min-w-0">
                   <TransactionList
                     transactions={filteredTransactions}
                     selectedMonth={filters.selectedMonth}
-                    onClearMonth={() => setFilters(prev => ({ ...prev, selectedMonth: 'all' }))}
                     onDeleteRecord={handleDeleteRecord}
                     selectedCategory={filters.selectedCategory}
                     onCategoryChange={(cat) => setFilters(prev => ({ ...prev, selectedCategory: cat }))}
@@ -363,7 +448,7 @@ export const App: React.FC = () => {
                 </div>
 
                 {/* 右側 5 欄：類別預算進度條 + 深色生活洞察金句卡 */}
-                <div className="lg:col-span-5 min-w-0">
+                <div className="xl:col-span-5 min-w-0">
                   <BudgetProgressPanel
                     transactions={transactions}
                     monthlySummaries={dynamicMonthlySummaries}

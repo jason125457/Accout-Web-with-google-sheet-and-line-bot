@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { X, PlusCircle } from 'lucide-react';
-import { Transaction } from '../types/finance';
+import { Transaction, TransactionCategory } from '../types/finance';
+import { STANDARD_CATEGORIES } from '../constants/categories';
 
 interface AddRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecord: (record: Transaction) => void;
 }
-
-const CATEGORIES = ['生活', '雜支', '娛樂', '家用', '社交'];
 
 export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   isOpen,
@@ -18,7 +17,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [item, setItem] = useState('');
-  const [category, setCategory] = useState('生活');
+  const [category, setCategory] = useState<TransactionCategory>('生活');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
 
@@ -97,7 +96,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
               消費類別
             </label>
             <div className="grid grid-cols-5 gap-1.5">
-              {CATEGORIES.map((cat) => (
+              {STANDARD_CATEGORIES.map((cat) => (
                 <button
                   type="button"
                   key={cat}

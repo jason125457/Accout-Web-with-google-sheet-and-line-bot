@@ -17,6 +17,7 @@ import {
 import { BarChart2, TrendingUp, Filter } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
 import { calculateSixMonthAverage } from '../utils/financeCalculations';
+import { getCurrentMonthString } from '../utils/financeCalculations';
 
 interface ExpenseChartsProps {
   monthlySummaries: MonthlySummary[];
@@ -46,7 +47,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
   onMonthClick,
 }) => {
   const [trendRange, setTrendRange] = useState<'recent6' | 'all'>('recent6');
-  const [chartMode, setChartMode] = useState<'bar' | 'area'>('area');
+  const [chartMode, setChartMode] = useState<'bar' | 'area'>('bar');
 
   const sortedSummaries = useMemo(() => {
     return [...monthlySummaries].sort((a, b) => a.month.localeCompare(b.month));
@@ -57,19 +58,15 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
   }, [sortedSummaries, trendRange]);
 
   const avgExpense = useMemo(() => {
-    return calculateSixMonthAverage(sortedSummaries);
-  }, [sortedSummaries]);
+    return calculateSixMonthAverage(sortedSummaries, selectedMonth);
+  }, [sortedSummaries, selectedMonth]);
 
   // Current active month in dataset
-  const latestMonth = useMemo(() => {
-    return sortedSummaries.length > 0 ? sortedSummaries[sortedSummaries.length - 1].month : '';
-  }, [sortedSummaries]);
+  const currentMonth = getCurrentMonthString();
 
   // Donut category data
   const filteredTransactions = useMemo(() => {
-    return selectedMonth === 'all'
-      ? transactions
-      : transactions.filter(t => t.month === selectedMonth);
+    return transactions.filter(t => t.month === selectedMonth);
   }, [transactions, selectedMonth]);
 
   const { categoryData, totalCategoryExpense } = useMemo(() => {
@@ -96,36 +93,27 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
   const formatNTD = (val: number) => `NT$ ${Math.round(val).toLocaleString()}`;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
       {/* ── 1. 左側：收支/月度趨勢圖 (7 欄) ── */}
-      <div className="lg:col-span-7 fintech-card p-4 sm:p-6 flex flex-col justify-between min-w-0 overflow-hidden">
+      <div className="xl:col-span-7 fintech-card p-4 sm:p-6 flex flex-col justify-between min-w-0 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">收支走勢分析</h3>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">月度支出趨勢</h3>
               {trendRange === 'recent6' && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/50">
                   近 6 個月
                 </span>
               )}
-              {selectedMonth !== 'all' && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-600 text-white shadow-sm flex items-center gap-1.5 animate-fade-in">
-                  <span>📅 已選：{selectedMonth}</span>
-                  <button
-                    onClick={() => onMonthClick?.(selectedMonth)}
-                    className="hover:text-teal-200 font-black text-xs leading-none"
-                    title="重設為全部月份"
-                  >
-                    ✕
-                  </button>
+              {selectedMonth && (
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-600 text-white shadow-sm flex items-center gap-1.5">
+                  📅 分析月份：{selectedMonth}
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              {selectedMonth !== 'all'
-                ? `下方近期交易明細已篩選為 ${selectedMonth}，點擊 ✕ 或圖表節點可恢復全部`
-                : '點擊圖表上任意月份節點或柱體，下方近期交易明細將自動切換為該月份'}
+              點擊任一月份，可切換整個儀表板的分析月份
             </p>
           </div>
 
@@ -134,6 +122,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
             <div className="bg-slate-100 p-0.5 rounded-xl flex items-center text-xs font-semibold text-slate-600">
               <button
                 onClick={() => setTrendRange('recent6')}
+                aria-pressed={trendRange === 'recent6'}
                 className={`px-2.5 py-1 rounded-lg transition-all ${
                   trendRange === 'recent6' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'hover:text-slate-900'
                 }`}
@@ -142,6 +131,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
               </button>
               <button
                 onClick={() => setTrendRange('all')}
+                aria-pressed={trendRange === 'all'}
                 className={`px-2.5 py-1 rounded-lg transition-all ${
                   trendRange === 'all' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'hover:text-slate-900'
                 }`}
@@ -158,6 +148,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   chartMode === 'area' ? 'bg-white text-teal-700 shadow-sm' : 'hover:text-slate-900'
                 }`}
                 title="切換平滑走勢圖"
+                aria-label="切換為平滑走勢圖"
+                aria-pressed={chartMode === 'area'}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
               </button>
@@ -167,6 +159,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   chartMode === 'bar' ? 'bg-white text-teal-700 shadow-sm' : 'hover:text-slate-900'
                 }`}
                 title="切換柱狀分佈圖"
+                aria-label="切換為柱狀分佈圖"
+                aria-pressed={chartMode === 'bar'}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
               </button>
@@ -208,13 +202,13 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   tick={{ fontSize: 10, fill: '#94a3b8' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload || !payload.length) return null;
                     const d = payload[0].payload as MonthlySummary;
-                    const isOngoing = d.month === latestMonth;
+                    const isOngoing = d.month === currentMonth;
                     const isSelected = d.month === selectedMonth;
                     return (
                       <div className="bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 text-xs space-y-1.5 cursor-pointer">
@@ -254,7 +248,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     strokeWidth={1.5}
                   />
                 )}
-                {selectedMonth !== 'all' && (
+                {selectedMonth && (
                   <ReferenceLine
                     x={selectedMonth}
                     stroke="#0d9488"
@@ -326,7 +320,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   tick={{ fontSize: 10, fill: '#94a3b8' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
@@ -362,7 +356,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     strokeWidth={1.5}
                   />
                 )}
-                {selectedMonth !== 'all' && (
+                {selectedMonth && (
                   <ReferenceLine
                     x={selectedMonth}
                     stroke="#0d9488"
@@ -378,7 +372,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 >
                   {trendData.map((entry) => {
                     const isSelected = selectedMonth === entry.month;
-                    const isOngoing = entry.month === latestMonth;
+                    const isOngoing = entry.month === currentMonth;
                     return (
                       <Cell
                         key={`bar-${entry.month}`}
@@ -411,7 +405,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
       </div>
 
       {/* ── 2. 右側：支出分類甜甜圈圖 + 垂直清單 (5 欄 - 參考設計亮點) ── */}
-      <div className="lg:col-span-5 fintech-card p-4 sm:p-6 flex flex-col justify-between min-w-0 overflow-hidden">
+      <div className="xl:col-span-5 fintech-card p-4 sm:p-6 flex flex-col justify-between min-w-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -429,7 +423,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
             )}
           </div>
           <span className="text-xs font-semibold text-slate-400 shrink-0">
-            {selectedMonth === 'all' ? '全部月份' : `${selectedMonth.slice(5)} 月`}
+            {selectedMonth ? `${selectedMonth.slice(5)} 月` : '尚未選擇'}
           </span>
         </div>
 
@@ -473,7 +467,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 總支出
               </span>
               <span className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight tabular-nums">
-                ${(totalCategoryExpense / 1000).toFixed(1)}k
+                NT$ {(totalCategoryExpense / 1000).toFixed(1)}k
               </span>
             </div>
           </div>
@@ -489,28 +483,28 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   <button
                     key={cat.name}
                     onClick={() => onCategoryClick && onCategoryClick(cat.name)}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-all ${
                       isSelected
                         ? 'bg-slate-900 text-white shadow-sm'
                         : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: color }}
                       />
-                      <span className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                      <span className={`font-semibold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-800'}`}>
                         {cat.name}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 tabular-nums">
+                    <div className="flex items-center gap-2 tabular-nums whitespace-nowrap">
                       <span className={`text-[11px] font-bold ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
                         {cat.percentage}%
                       </span>
                       <span className={`font-bold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                        ${cat.value.toLocaleString()}
+                        NT$ {cat.value.toLocaleString()}
                       </span>
                     </div>
                   </button>

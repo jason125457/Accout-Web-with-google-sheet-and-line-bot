@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -25,9 +25,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   '家用': '#2563eb',
   '社交': '#ec4899',
   '未分類': '#94a3b8',
-  '交通': '#8b5cf6',
 };
-const FALLBACK_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#ec4899', '#64748b', '#8b5cf6', '#f97316'];
+const FALLBACK_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#ec4899', '#64748b'];
 
 interface MonthData {
   month: string;
@@ -38,6 +37,7 @@ interface MonthData {
 
 export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ transactions, onDeleteRecord }) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const selectedDetailRef = useRef<HTMLDivElement | null>(null);
 
   // Build per-month data
   const monthDataList: MonthData[] = useMemo(() => {
@@ -85,6 +85,18 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
       .sort((a, b) => compareTransactionDates(a.date, b.date, false));
   }, [transactions, selectedMonth]);
 
+  useEffect(() => {
+    if (!selectedMonth) return;
+    const timer = window.setTimeout(() => {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      selectedDetailRef.current?.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [selectedMonth]);
+
   const formatNTD = (v: number) => `NT$ ${v.toLocaleString()}`;
   const formatMonthLabel = (m: string) => /^\d{4}-\d{2}$/.test(m)
     ? `${m.slice(0, 4)}/${m.slice(5, 7)}`
@@ -129,7 +141,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
-              margin={{ top: 8, right: 12, left: -10, bottom: 0 }}
+              margin={{ top: 8, right: 12, left: 2, bottom: 0 }}
               onClick={(data) => {
                 if (data?.activePayload?.[0]) {
                   const m = data.activePayload[0].payload.month as string;
@@ -151,7 +163,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                 tick={{ fontSize: 11, fill: '#64748b' }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                tickFormatter={(v) => `NT$${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
                 content={({ active, payload, label }) => {
@@ -195,7 +207,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
         {selectedMonth && (
           <p className="text-xs text-center text-teal-700 font-semibold mt-2 bg-teal-50 py-1.5 rounded-xl">
-            已選取 {formatMonthLabel(selectedMonth)} · 捲動至下方查看明細
+            已選取 {formatMonthLabel(selectedMonth)} · 已展開當月明細
           </p>
         )}
       </div>
@@ -206,10 +218,13 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...monthDataList].reverse().map((md) => {
             const isSelected = selectedMonth === md.month;
+            const detailsId = `month-details-${md.month}`;
             return (
+              <React.Fragment key={md.month}>
               <button
-                key={md.month}
                 onClick={() => setSelectedMonth(prev => prev === md.month ? null : md.month)}
+                aria-expanded={isSelected}
+                aria-controls={detailsId}
                 className={`fintech-card p-4 text-left transition-all active:scale-[0.98] ${
                   isSelected
                     ? 'ring-2 ring-teal-500 ring-offset-1'
@@ -261,20 +276,24 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                   })}
                 </div>
               </button>
+              {isSelected && selectedTxns.length > 0 && (
+                <div
+                  id={detailsId}
+                  ref={selectedDetailRef}
+                  className="col-span-full scroll-mt-4"
+                >
+                  <h2 className="text-sm font-bold text-slate-700 mb-3 px-1">
+                    {md.month.slice(0, 4)} 年 {md.month.slice(5, 7)} 月 · 詳細記帳明細
+                  </h2>
+                  <TransactionList transactions={selectedTxns} onDeleteRecord={onDeleteRecord} />
+                </div>
+              )}
+              </React.Fragment>
             );
           })}
         </div>
       </div>
 
-      {/* ── Selected Month Transaction List ── */}
-      {selectedMonth && selectedTxns.length > 0 && (
-        <div>
-          <h2 className="text-sm font-bold text-slate-700 mb-3 px-1">
-            {selectedMonth.slice(0, 4)} 年 {selectedMonth.slice(5, 7)} 月 · 詳細記帳明細
-          </h2>
-          <TransactionList transactions={selectedTxns} onDeleteRecord={onDeleteRecord} />
-        </div>
-      )}
     </div>
   );
 };

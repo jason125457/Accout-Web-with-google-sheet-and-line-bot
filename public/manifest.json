@@ -1,12 +1,12 @@
 {
   "name": "個人財務儀表板",
   "short_name": "個人記帳",
-  "description": "個人財務管理與分析儀表板，支援即時連動 LINE 記帳與 Google 試算表",
+  "description": "個人財務管理與分析儀表板，支援同步 LINE 記帳與 Google 試算表",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#FBF9F5",
+  "theme_color": "#FBF9F5",
   "orientation": "portrait-primary",
   "icons": [
     {
