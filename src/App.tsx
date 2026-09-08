@@ -62,7 +62,7 @@ export const App: React.FC = () => {
   const handleMonthDrillDown = (month: string) => {
     setFilters(prev => ({
       ...prev,
-      selectedMonth: month
+      selectedMonth: prev.selectedMonth === month ? '' : month
     }));
   };
 
@@ -255,7 +255,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (availableMonths.length === 0) return;
     setFilters(prev => {
-      if (availableMonths.includes(prev.selectedMonth)) return prev;
+      if (!prev.selectedMonth || availableMonths.includes(prev.selectedMonth)) return prev;
       const currentMonth = getCurrentMonthString();
       const fallbackMonth = availableMonths.includes(currentMonth) ? currentMonth : availableMonths[0];
       return { ...prev, selectedMonth: fallbackMonth };
@@ -435,6 +435,7 @@ export const App: React.FC = () => {
                   <TransactionList
                     transactions={filteredTransactions}
                     selectedMonth={filters.selectedMonth}
+                    onClearMonth={() => setFilters(prev => ({ ...prev, selectedMonth: '' }))}
                     onDeleteRecord={handleDeleteRecord}
                     selectedCategory={filters.selectedCategory}
                     onCategoryChange={(cat) => setFilters(prev => ({ ...prev, selectedCategory: cat }))}

@@ -57,16 +57,17 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
     return trendRange === 'recent6' ? sortedSummaries.slice(-6) : sortedSummaries;
   }, [sortedSummaries, trendRange]);
 
-  const avgExpense = useMemo(() => {
-    return calculateSixMonthAverage(sortedSummaries, selectedMonth);
-  }, [sortedSummaries, selectedMonth]);
-
   // Current active month in dataset
   const currentMonth = getCurrentMonthString();
+  const referenceMonth = selectedMonth || sortedSummaries[sortedSummaries.length - 1]?.month || currentMonth;
+
+  const avgExpense = useMemo(() => {
+    return calculateSixMonthAverage(sortedSummaries, referenceMonth);
+  }, [sortedSummaries, referenceMonth]);
 
   // Donut category data
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => t.month === selectedMonth);
+    return selectedMonth ? transactions.filter(t => t.month === selectedMonth) : transactions;
   }, [transactions, selectedMonth]);
 
   const { categoryData, totalCategoryExpense } = useMemo(() => {
@@ -92,6 +93,11 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
 
   const formatNTD = (val: number) => `NT$ ${Math.round(val).toLocaleString()}`;
 
+  const handleChartClick = (event: any) => {
+    const month = event?.activePayload?.[0]?.payload?.month || event?.activeLabel;
+    if (month) onMonthClick?.(month);
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
       {/* ── 1. 左側：收支/月度趨勢圖 (7 欄) ── */}
@@ -107,9 +113,16 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 </span>
               )}
               {selectedMonth && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-600 text-white shadow-sm flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onMonthClick?.(selectedMonth)}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-teal-600 text-white shadow-sm inline-flex items-center gap-1.5 hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+                  aria-label={`取消 ${selectedMonth} 月份篩選`}
+                  title="取消月份篩選"
+                >
                   📅 分析月份：{selectedMonth}
-                </span>
+                  <span aria-hidden="true">✕</span>
+                </button>
               )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -175,13 +188,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
               <AreaChart
                 data={trendData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onClick={(e: any) => {
-                  if (e && e.activePayload && e.activePayload.length > 0) {
-                    onMonthClick?.(e.activePayload[0].payload.month);
-                  } else if (e && e.activeLabel) {
-                    onMonthClick?.(e.activeLabel);
-                  }
-                }}
+                onClick={handleChartClick}
                 className="cursor-pointer"
               >
                 <defs>
@@ -211,7 +218,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     const isOngoing = d.month === currentMonth;
                     const isSelected = d.month === selectedMonth;
                     return (
-                      <div className="bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 text-xs space-y-1.5 cursor-pointer">
+                      <div className="bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 text-xs space-y-1.5">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-bold text-slate-300">{d.month}</span>
                           <div className="flex items-center gap-1">
@@ -233,8 +240,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                         <div className="text-[10px] text-slate-400">
                           半年均線：{formatNTD(avgExpense)}
                         </div>
-                        <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10 flex items-center gap-1">
-                          <span>{isSelected ? '✕ 點擊取消篩選' : '👉 點擊切換下方交易明細'}</span>
+                        <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10">
+                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '👉 點擊切換下方交易明細'}</span>
                         </div>
                       </div>
                     );
@@ -299,13 +306,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
               <BarChart
                 data={trendData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onClick={(e: any) => {
-                  if (e && e.activePayload && e.activePayload.length > 0) {
-                    onMonthClick?.(e.activePayload[0].payload.month);
-                  } else if (e && e.activeLabel) {
-                    onMonthClick?.(e.activeLabel);
-                  }
-                }}
+                onClick={handleChartClick}
                 className="cursor-pointer"
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -329,7 +330,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     const d = payload[0].payload as MonthlySummary;
                     const isSelected = d.month === selectedMonth;
                     return (
-                      <div className="bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 text-xs space-y-1.5 cursor-pointer">
+                      <div className="bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 text-xs space-y-1.5">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-bold text-slate-300">{d.month}</span>
                           {isSelected && (
@@ -341,8 +342,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                         <div className="text-base font-extrabold text-white tabular-nums">
                           {formatNTD(d.totalExpense)}
                         </div>
-                        <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10 flex items-center gap-1">
-                          <span>{isSelected ? '✕ 點擊取消篩選' : '👉 點擊切換下方交易明細'}</span>
+                        <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10">
+                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '👉 點擊切換下方交易明細'}</span>
                         </div>
                       </div>
                     );
@@ -423,7 +424,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
             )}
           </div>
           <span className="text-xs font-semibold text-slate-400 shrink-0">
-            {selectedMonth ? `${selectedMonth.slice(5)} 月` : '尚未選擇'}
+            {selectedMonth ? `${selectedMonth.slice(5)} 月` : '全部月份'}
           </span>
         </div>
 

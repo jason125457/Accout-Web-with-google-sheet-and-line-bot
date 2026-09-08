@@ -68,7 +68,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
                 aria-label="選擇分析月份"
                 className="bg-transparent appearance-none pr-4 outline-none cursor-pointer font-bold text-slate-800 text-xs w-full truncate"
               >
-                {!selectedMonth && <option value="">選擇分析月份</option>}
+                <option value="">全部月份</option>
                 {availableMonths.map((m) => (
                   <option key={m} value={m}>
                     {formatMonthLabel(m)}
