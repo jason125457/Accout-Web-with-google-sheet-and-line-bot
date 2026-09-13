@@ -94,6 +94,11 @@ account_web/
 - 專案根目錄 `.gitignore` 必須隨時包含：`*.xlsx`, `*.xls`, `*.csv`, `node_modules/`, `dist/`。
 - `API_SECRET_TOKEN` 與 GAS URL 僅允許存在於客戶端 `localStorage`，不得 hardcode 於任何前端檔案中。
 
+### 🔴 地雷 5：Google Sheets 千分位格式 (`#,##0`) 導致 `parseFloat` 截斷金額 (如 1,500 變 1)
+- **現象**：Google Sheets 金額欄位若設定千分位格式（`#,##0`），GAS `getDisplayValues()` 回傳字串會自帶逗號（如 `"1,500"`）。
+- **絕對禁止**：直接對原始字串呼叫 `parseFloat(str)`！在 JavaScript 中，`parseFloat("1,500")` 遇到逗號會立刻終止解析並返回 `1`，造成所有破千金額嚴重失真（例如 1,500 變 1、20,103 變 20）。
+- **正確做法**：統一使用 `parseAmount(raw)`，先過濾除數字與小數點外的千分位逗號（`replace(/[,，]/g, '')`）再轉為數字，且修改時遞增 `storage.ts` 快取版本清除舊快取。
+
 ---
 
 ## 🎨 4. 設計規範摘要 (Design Tokens)

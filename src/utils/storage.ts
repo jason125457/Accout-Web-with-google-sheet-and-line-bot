@@ -1,6 +1,7 @@
 import { GasConfig, Transaction, MonthlySummary } from '../types/finance';
 import { formatDate } from './dateUtils';
 import { normalizeCategory } from '../constants/categories';
+import { parseAmount } from './gasApi';
 
 // Bump this when the data schema changes to auto-clear stale cached data
 const CACHE_VERSION = 'v6';
@@ -48,6 +49,7 @@ export const getCustomTransactions = (): Transaction[] => {
       const records: Transaction[] = JSON.parse(raw);
       return records.map(r => ({
         ...r,
+        amount: typeof r.amount === 'number' ? r.amount : parseAmount(r.amount),
         date: formatDate(r.date),
         category: normalizeCategory(r.category)
       }));
@@ -86,8 +88,15 @@ export const getCachedData = (): { details: Transaction[]; summary: MonthlySumma
       if (data && Array.isArray(data.details)) {
         data.details = data.details.map((d: Transaction) => ({
           ...d,
+          amount: typeof d.amount === 'number' ? d.amount : parseAmount(d.amount),
           date: formatDate(d.date),
           category: normalizeCategory(d.category)
+        }));
+      }
+      if (data && Array.isArray(data.summary)) {
+        data.summary = data.summary.map((s: MonthlySummary) => ({
+          ...s,
+          totalExpense: typeof s.totalExpense === 'number' ? s.totalExpense : parseAmount(s.totalExpense)
         }));
       }
       return data;

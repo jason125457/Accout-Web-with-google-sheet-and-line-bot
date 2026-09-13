@@ -51,6 +51,22 @@ export interface GasFetchResult {
   updatedAt?: string;
 }
 
+/**
+ * Safely parse amount / expense numbers from Google Sheets or Apps Script.
+ * Google Sheets format "#,##0" formats 1500 as "1,500".
+ * Standard JavaScript `parseFloat("1,500")` evaluates to 1 because it stops parsing at the comma!
+ * This function strips commas, currency signs, and extra whitespace before parsing.
+ */
+export function parseAmount(raw: unknown): number {
+  if (typeof raw === 'number') {
+    return isNaN(raw) ? 0 : raw;
+  }
+  if (!raw && raw !== 0) return 0;
+  const clean = String(raw).replace(/[,，]/g, '').replace(/[^\d.-]/g, '').trim();
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
 // Convert 2D array or object array from GAS into standard Transaction[]
 export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
   if (!Array.isArray(rawDetails) || rawDetails.length === 0) return [];
@@ -74,8 +90,7 @@ export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
       const formattedDate = formatDate(rawDate);
       const item = String(row[itemIdx >= 0 ? itemIdx : 1] || '').trim();
       const category = normalizeCategory(row[catIdx >= 0 ? catIdx : 2]);
-      const rawAmt = parseFloat(String(row[amtIdx >= 0 ? amtIdx : 3] || '0'));
-      const amount = isNaN(rawAmt) ? 0 : rawAmt;
+      const amount = parseAmount(row[amtIdx >= 0 ? amtIdx : 3]);
       let month = normalizeMonthString(row[monthIdx >= 0 ? monthIdx : 4]);
       if (!month && formattedDate.length >= 7) month = formattedDate.slice(0, 7);
 
@@ -97,8 +112,7 @@ export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
       const formattedDate = formatDate(rawDate);
       const item = String(row['項目'] || row['說明'] || row['item'] || '').trim();
       const category = normalizeCategory(row['類別'] || row['category']);
-      const rawAmt = parseFloat(String(row['金額'] || row['amount'] || '0'));
-      const amount = isNaN(rawAmt) ? 0 : rawAmt;
+      const amount = parseAmount(row['金額'] || row['amount']);
       let month = normalizeMonthString(row['月份'] || row['month'] || '');
       if (!month && formattedDate.length >= 7) month = formattedDate.slice(0, 7);
 
@@ -135,9 +149,7 @@ export function normalizeGasSummary(rawSummary: any[]): MonthlySummary[] {
       if (!Array.isArray(row) || row.length === 0) continue;
 
       let month = normalizeMonthString(row[monthIdx >= 0 ? monthIdx : 0]);
-
-      const rawExp = parseFloat(String(row[expIdx >= 0 ? expIdx : 1] || '0'));
-      const totalExpense = isNaN(rawExp) ? 0 : rawExp;
+      const totalExpense = parseAmount(row[expIdx >= 0 ? expIdx : 1]);
 
       if (month && totalExpense >= 0) {
         summaries.push({ month, totalExpense });
@@ -146,8 +158,7 @@ export function normalizeGasSummary(rawSummary: any[]): MonthlySummary[] {
   } else {
     rawSummary.forEach((row) => {
       const month = normalizeMonthString(row['月份'] || row['month'] || '');
-      const rawExp = parseFloat(String(row['總支出'] || row['totalExpense'] || '0'));
-      const totalExpense = isNaN(rawExp) ? 0 : rawExp;
+      const totalExpense = parseAmount(row['總支出'] || row['totalExpense']);
 
       if (month && totalExpense >= 0) {
         summaries.push({ month, totalExpense });
