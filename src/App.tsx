@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
 import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
-import { MonthlyBreakdownPage } from './components/MonthlyBreakdownPage';
 import { SyncModal } from './components/SyncModal';
 import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource } from './types/finance';
 import { fetchFromGas, normalizeMonthString } from './utils/gasApi';
@@ -15,12 +14,14 @@ import { compareTransactionDates } from './utils/dateUtils';
 import {
   getGasConfig,
   saveGasConfig,
-  getCustomTransactions,
-  deleteCustomTransaction,
   saveCachedData,
   getCachedData
 } from './utils/storage';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+
+const MonthlyBreakdownPage = lazy(() =>
+  import('./components/MonthlyBreakdownPage').then(m => ({ default: m.MonthlyBreakdownPage }))
+);
 
 export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -92,46 +93,36 @@ export const App: React.FC = () => {
 
   // Load demo data
   const loadDemoData = () => {
-    const customRecords = getCustomTransactions();
-    const details = [...customRecords, ...DEMO_TRANSACTIONS];
+    const details = [...DEMO_TRANSACTIONS];
     setTransactions(details);
     setMonthlySummaries(DEMO_SUMMARIES);
     selectDefaultMonth(details, DEMO_SUMMARIES);
     setDataSource('demo');
   };
 
-  // Initial load
+  // Applies a successful GAS response to state, cache and config. Returns the sync time string.
+  const applyCloudData = (details: Transaction[], summary: MonthlySummary[], config: GasConfig): string => {
+    setTransactions(details);
+    setMonthlySummaries(summary);
+    selectDefaultMonth(details, summary);
+    setDataSource('cloud');
+    setSyncError(null);
+    saveCachedData({ details, summary });
+    const nowStr = new Date().toLocaleString('zh-TW');
+    const updatedConfig = { ...config, lastSyncTime: nowStr };
+    setGasConfig(updatedConfig);
+    saveGasConfig(updatedConfig);
+    return nowStr;
+  };
+
+  // Initial load: render cached data immediately, then refresh from GAS in the background.
   useEffect(() => {
     const initData = async () => {
-      setIsLoading(true);
       const savedConfig = getGasConfig();
-      let initialSyncError: string | null = null;
-
-      if (savedConfig.webAppUrl) {
-        const res = await fetchFromGas(savedConfig.webAppUrl, savedConfig.secretToken);
-        if (res.success && res.details && res.summary) {
-          const customRecords = getCustomTransactions();
-          const details = [...customRecords, ...res.details];
-          setTransactions(details);
-          setMonthlySummaries(res.summary);
-          selectDefaultMonth(details, res.summary);
-          setDataSource('cloud');
-          setSyncError(null);
-          saveCachedData({ details: res.details, summary: res.summary });
-          const updatedConfig = { ...savedConfig, lastSyncTime: new Date().toLocaleString('zh-TW') };
-          setGasConfig(updatedConfig);
-          saveGasConfig(updatedConfig);
-          showToast('success', `已連線 Google 雲端！成功載入 ${res.details.length} 筆最新帳目。`);
-          setIsLoading(false);
-          return;
-        }
-        initialSyncError = res.message || '無法連線 Google 試算表。';
-      }
-
-      // If cloud fetch failed, load cache or demo
       const cache = getCachedData();
-      if (cache && cache.details.length > 0) {
-        const customRecords = getCustomTransactions();
+      const hasCache = !!cache && cache.details.length > 0;
+
+      if (hasCache) {
         const cleanDetails = cache.details.map(t => ({
           ...t,
           month: normalizeMonthString(t.month) || (t.date?.slice(0, 7) ?? '')
@@ -140,18 +131,33 @@ export const App: React.FC = () => {
           ...s,
           month: normalizeMonthString(s.month)
         })).filter(s => /^\d{4}-\d{2}$/.test(s.month));
-        const details = [...customRecords, ...cleanDetails];
+        const details = cleanDetails;
         setTransactions(details);
         setMonthlySummaries(cleanSummary);
         selectDefaultMonth(details, cleanSummary);
         setDataSource('cache');
-        setSyncError(initialSyncError || '目前顯示上次成功同步的快取資料。');
+        setIsLoading(false);
+      }
+
+      if (!savedConfig.webAppUrl) {
+        if (!hasCache) loadDemoData();
+        setIsLoading(false);
+        return;
+      }
+
+      setIsSyncing(true);
+      const res = await fetchFromGas(savedConfig.webAppUrl, savedConfig.secretToken);
+      setIsSyncing(false);
+
+      if (res.success && res.details && res.summary) {
+        applyCloudData(res.details, res.summary, savedConfig);
       } else {
-        loadDemoData();
-        if (initialSyncError) {
+        const message = res.message || '無法連線 Google 試算表。';
+        if (!hasCache) {
+          loadDemoData();
           setDataSource('error');
-          setSyncError(initialSyncError);
         }
+        setSyncError(message);
       }
       setIsLoading(false);
     };
@@ -171,18 +177,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      const customRecords = getCustomTransactions();
-      const details = [...customRecords, ...res.details];
-      setTransactions(details);
-      setMonthlySummaries(res.summary);
-      selectDefaultMonth(details, res.summary);
-      setDataSource('cloud');
-      setSyncError(null);
-      const nowStr = new Date().toLocaleString('zh-TW');
-      const updatedConfig = { ...gasConfig, lastSyncTime: nowStr };
-      setGasConfig(updatedConfig);
-      saveGasConfig(updatedConfig);
-      saveCachedData({ details: res.details, summary: res.summary });
+      const nowStr = applyCloudData(res.details, res.summary, gasConfig);
       showToast('success', `同步成功！已由 Google 雲端更新至最新資料 (${nowStr})。`);
     } else {
       const message = res.message || '連線 Google 失敗，請確認 Apps Script 部署。';
@@ -199,17 +194,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      const customRecords = getCustomTransactions();
-      const details = [...customRecords, ...res.details];
-      setTransactions(details);
-      setMonthlySummaries(res.summary);
-      selectDefaultMonth(details, res.summary);
-      setDataSource('cloud');
-      setSyncError(null);
-      const updated = { ...newConfig, lastSyncTime: new Date().toLocaleString('zh-TW') };
-      setGasConfig(updated);
-      saveGasConfig(updated);
-      saveCachedData({ details: res.details, summary: res.summary });
+      applyCloudData(res.details, res.summary, newConfig);
       showToast('success', 'Google 試算表連線成功！已載入最新雲端資料。');
       return true;
     } else {
@@ -226,15 +211,6 @@ export const App: React.FC = () => {
     loadDemoData();
     setSyncError(null);
     showToast('warn', '已中斷 Google 連線，切換回 Demo 示範模式。');
-  };
-
-  // Delete Record locally
-  const handleDeleteRecord = (id: string) => {
-    const target = transactions.find(t => t.id === id);
-    const updated = transactions.filter(t => t.id !== id);
-    setTransactions(updated);
-    deleteCustomTransaction(id);
-    showToast('warn', `已刪除手動記帳：${target?.item || '該筆項目'} (NT$ ${target?.amount || 0})`);
   };
 
   // Available months for filter dropdown
@@ -383,7 +359,7 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {(dataSource === 'cache' || dataSource === 'error') && (
+              {((dataSource === 'cache' && syncError) || dataSource === 'error') && (
                 <div className={`rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border ${
                   dataSource === 'cache'
                     ? 'bg-amber-50 border-amber-200 text-amber-900'
@@ -436,7 +412,6 @@ export const App: React.FC = () => {
                     transactions={filteredTransactions}
                     selectedMonth={filters.selectedMonth}
                     onClearMonth={() => setFilters(prev => ({ ...prev, selectedMonth: '' }))}
-                    onDeleteRecord={handleDeleteRecord}
                     selectedCategory={filters.selectedCategory}
                     onCategoryChange={(cat) => setFilters(prev => ({ ...prev, selectedCategory: cat }))}
                     searchQuery={filters.searchQuery}
@@ -460,10 +435,11 @@ export const App: React.FC = () => {
             </>
           ) : (
             /* ── 每月花費分析獨立分頁 ── */
-            <MonthlyBreakdownPage
-              transactions={transactions}
-              onDeleteRecord={handleDeleteRecord}
-            />
+            <Suspense fallback={<div className="py-32 text-center text-sm text-slate-400">載入中…</div>}>
+              <MonthlyBreakdownPage
+                transactions={transactions}
+              />
+            </Suspense>
           )}
         </main>
 

@@ -4,8 +4,6 @@ import {
   Coffee,
   Car,
   Film,
-  Sparkles,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -17,7 +15,6 @@ import { STANDARD_CATEGORIES } from '../constants/categories';
 
 interface TransactionListProps {
   transactions: Transaction[];
-  onDeleteRecord?: (id: string) => void;
   selectedMonth?: string;
   onClearMonth?: () => void;
   selectedCategory?: string;
@@ -43,7 +40,6 @@ const CATEGORY_ICONS: Record<
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
-  onDeleteRecord,
   selectedMonth = '',
   onClearMonth,
   selectedCategory = 'all',
@@ -228,12 +224,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       <span className="font-bold text-sm text-slate-800 truncate">
                         {t.item}
                       </span>
-                      {t.isCustom && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold border border-teal-200/60 flex items-center gap-0.5 shrink-0">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          手動
-                        </span>
-                      )}
                     </div>
                     <div className="text-[11px] text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
                       <span>{t.date}</span>
@@ -241,7 +231,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   </div>
                 </div>
 
-                {/* Right: Category tag + Amount + Delete button */}
+                {/* Right: Category tag + Amount */}
                 <div className="flex items-center gap-3 shrink-0">
                   {/* Category capsule */}
                   <span
@@ -263,18 +253,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       </span>
                     </div>
                   </div>
-
-                  {/* Custom record delete action */}
-                  {t.isCustom && onDeleteRecord && (
-                    <button
-                      onClick={() => onDeleteRecord(t.id)}
-                      className="p-1.5 text-slate-300 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                      title="刪除手動記帳"
-                      aria-label={`刪除手動記帳：${t.item}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
                 </div>
               </div>
             );

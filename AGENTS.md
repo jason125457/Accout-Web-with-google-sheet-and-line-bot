@@ -44,26 +44,29 @@ account_web/
 ├── README.md                  # 專案介紹與使用者文檔
 ├── .gitignore                 # 嚴格排除 *.xlsx, *.csv, node_modules, dist
 ├── public/                    # 靜態資源目錄 (Cloudflare Pages 預設原生支援 SPA 路由回退，切勿放 /* /index.html 200 的 _redirects 避免 100324 迴圈報錯)
+├── gas/
+│   └── Code.gs                # GAS 後端：LINE doPost（白名單/多筆/撤銷）+ 儀表板 doGet（v1/v2）
 ├── src/
 │   ├── components/
-│   │   ├── Header.tsx         # 頂部導覽、RWD 膠囊連線狀態、即時同步、記一筆按鈕
-│   │   ├── MetricCards.tsx    # 4 大金融核心指標卡 (當月支出、前期比、半年均線、最高單筆)
-│   │   ├── BurnRateCard.tsx   # 本月進度條、日均燒錢速率 (NT$/天)、月底推估結算
-│   │   ├── InsightsPanel.tsx  # 純演算法生活洞察 (週末vs平日比、最花錢的日子、MoM變化)
+│   │   ├── Sidebar.tsx        # 左側導覽、連線狀態、同步、雲端設定入口
+│   │   ├── TopGreetingBar.tsx # 問候語、分析月份選單、同步按鈕
+│   │   ├── MetricCards.tsx    # 4 大 KPI（當月支出 vs 上月同期、半年均線、最高單筆、月底推估）
 │   │   ├── ExpenseCharts.tsx  # 柱狀/走勢雙視圖 + 類別甜甜圈圖 (支援 Drill-down 連動篩選)
-│   │   ├── FilterBar.tsx      # 多維搜尋、月份選單、大額開關、日常模式開關 (≥$5k)
-│   │   ├── TransactionList.tsx# 交易明細列表 (支援分頁、類別 Tag、大額醒目徽章)
-│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁 (堆疊柱狀圖 + 月份卡片 Grid)
-│   │   ├── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
-│   │   └── AddRecordModal.tsx # 本機手動補登記一筆彈窗
-│   ├── types/
-│   │   └── finance.ts         # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
+│   │   ├── BudgetProgressPanel.tsx # 類別支出進度 + 週末/平日洞察
+│   │   ├── TransactionList.tsx# 交易明細列表 (分頁、類別 Tag、搜尋、排序、大額徽章)
+│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁（React.lazy 延遲載入）
+│   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
+│   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
+│   ├── types/finance.ts       # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
 │   ├── utils/
-│   │   ├── gasApi.ts          # GAS 連線、正規化、時區偏移修正 (重要！)
-│   │   ├── demoData.ts        # 內建 50+ 筆擬真 Demo 資料 (保護真實隱私)
-│   │   └── storage.ts         # LocalStorage 讀寫與快取版本遷移 (CACHE_VERSION)
-│   ├── App.tsx                # 主應用狀態管理、Tab 切換、Drill-down 篩選派發
-│   ├── main.tsx               # React 根渲染節點
+│   │   ├── gasApi.ts          # GAS 連線；v2 records 與 v1 顯示字串兩種格式的正規化
+│   │   ├── dateUtils.ts       # 上午/下午、序列號、ISO 等日期解析
+│   │   ├── financeCalculations.ts # 月彙總、半年均線、上月同期比較
+│   │   ├── demoData.ts        # 內建擬真 Demo 資料 (保護真實隱私)
+│   │   ├── storage.ts         # LocalStorage 讀寫與快取版本遷移 (CACHE_VERSION)
+│   │   └── __tests__/         # Vitest 回歸測試（地雷 1、2、5 都有覆蓋，TZ 固定 Asia/Taipei）
+│   ├── App.tsx                # 狀態管理：先顯示快取、背景同步 GAS（applyCloudData）
+│   ├── main.tsx               # React 根渲染節點 + PWA Service Worker 註冊
 │   └── index.css              # 全域樣式、字體與 Fintech 自訂 Utility
 ```
 
@@ -99,6 +102,13 @@ account_web/
 - **絕對禁止**：直接對原始字串呼叫 `parseFloat(str)`！在 JavaScript 中，`parseFloat("1,500")` 遇到逗號會立刻終止解析並返回 `1`，造成所有破千金額嚴重失真（例如 1,500 變 1、20,103 變 20）。
 - **正確做法**：統一使用 `parseAmount(raw)`，先過濾除數字與小數點外的千分位逗號（`replace(/[,，]/g, '')`）再轉為數字，且修改時遞增 `storage.ts` 快取版本清除舊快取。
 
+### 🔴 地雷 6：GAS 資料格式 v1 / v2
+- 前端呼叫 doGet 一律帶 `v=2`。新版 GAS 回傳 `records: [{id, date, item, category, amount, month}]`：日期已用 `Asia/Taipei` 格式化為 `yyyy-MM-dd HH:mm:ss`、金額為數字、`id` 為試算表列號（`r12`）。
+- 舊版 GAS 會忽略 `v` 並回傳 `details`（`getDisplayValues()` 二維字串陣列），前端仍以 `normalizeGasDetails` 相容處理。兩條路徑都要保留，直到確認線上 GAS 已更新。
+- 「月度彙總」工作表不再由程式累加；前端月總額一律從明細計算（`calculateDynamicMonthlySummaries`）。
+- LINE 端：`ALLOWED_USER_IDS` 指令碼屬性為白名單（留空不限制）；「我的ID」查 userId、「撤銷」刪除上一批 LINE 寫入（會先比對內容）。寫入一律包在 `LockService` 內。
+- 修改 `gas/Code.gs` 後必須手動貼到 Apps Script 並「管理部署 → 編輯 → 新版本」，否則 Web App URL 仍跑舊程式。
+
 ---
 
 ## 🎨 4. 設計規範摘要 (Design Tokens)
@@ -131,6 +141,9 @@ npm run build
 
 # 4. 本地預覽生產建置結果
 npm run preview
+
+# 5. 執行解析/日期/金額回歸測試 (Vitest)
+npm test
 ```
 
 ---

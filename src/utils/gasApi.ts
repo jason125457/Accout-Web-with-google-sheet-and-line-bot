@@ -133,6 +133,31 @@ export function normalizeGasDetails(rawDetails: any[]): Transaction[] {
   return transactions;
 }
 
+/**
+ * v2 GAS records: date is already "yyyy-MM-dd HH:mm:ss" in Asia/Taipei, amount is a number,
+ * id is the sheet row ("r12"), stable across fetches as long as rows are only appended.
+ */
+export function normalizeGasRecords(rawRecords: any[]): Transaction[] {
+  const transactions: Transaction[] = [];
+  rawRecords.forEach((r) => {
+    const date = formatDate(r?.date);
+    const item = String(r?.item ?? '').trim();
+    const amount = parseAmount(r?.amount);
+    const month = normalizeMonthString(r?.month) || date.slice(0, 7);
+    if (!date || !item || amount <= 0) return;
+    transactions.push({
+      id: String(r.id || `gas-${date}-${amount}`),
+      date,
+      item,
+      category: normalizeCategory(r.category),
+      amount,
+      month
+    });
+  });
+  transactions.sort((a, b) => compareTransactionDates(a.date, b.date, false));
+  return transactions;
+}
+
 // Convert 2D array or object array from GAS into MonthlySummary[]
 export function normalizeGasSummary(rawSummary: any[]): MonthlySummary[] {
   if (!Array.isArray(rawSummary) || rawSummary.length === 0) return [];
@@ -182,6 +207,7 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
   try {
     const cleanUrl = webAppUrl.trim();
     const urlObj = new URL(cleanUrl);
+    urlObj.searchParams.set('v', '2'); // ignored by older GAS deployments, which still return v1 rows
     if (secretToken) {
       urlObj.searchParams.set('token', secretToken.trim());
     }
@@ -208,7 +234,10 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
       return { success: false, message: data.message || 'Google Apps Script 回傳錯誤' };
     }
 
-    const details = normalizeGasDetails(data.details || []);
+    // v2 backend returns pre-normalized `records`; older deployments return raw display-value rows.
+    const details = Array.isArray(data.records)
+      ? normalizeGasRecords(data.records)
+      : normalizeGasDetails(data.details || []);
     const summary = normalizeGasSummary(data.summary || []);
 
     return {

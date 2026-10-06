@@ -1,5 +1,5 @@
 // Service Worker for Personal Finance Dashboard PWA
-const CACHE_NAME = 'finance-pwa-v4-amount-fix';
+const CACHE_NAME = 'finance-pwa-v5-gas-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

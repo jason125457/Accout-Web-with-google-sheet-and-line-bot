@@ -9,6 +9,28 @@ export function getCurrentMonthString(): string {
 }
 
 /**
+ * "2026-01" -> "2025-12"
+ */
+export function getPreviousMonth(month: string): string {
+  const [year, mon] = month.split('-').map(Number);
+  if (!year || !mon) return '';
+  const d = new Date(year, mon - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Sum of a month's transactions dated on or before `day` (1-based).
+ * Used for like-for-like comparison against an in-progress month.
+ */
+export function sumMonthUpToDay(transactions: Transaction[], month: string, day: number): number {
+  return transactions.reduce((sum, t) => {
+    if (t.month !== month) return sum;
+    const txDay = parseInt(t.date.slice(8, 10), 10);
+    return !isNaN(txDay) && txDay <= day ? sum + t.amount : sum;
+  }, 0);
+}
+
+/**
  * Dynamically aggregates transactions into MonthlySummary[] format.
  * This ensures that when filters (like "日常模式" excluding >= $5k) are applied,
  * or when manual records are added, the monthly summaries for charts and metrics

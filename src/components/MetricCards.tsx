@@ -10,7 +10,7 @@ import {
   Zap
 } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
-import { calculateSixMonthAverage } from '../utils/financeCalculations';
+import { calculateSixMonthAverage, getPreviousMonth, sumMonthUpToDay } from '../utils/financeCalculations';
 
 interface MetricCardsProps {
   monthlySummaries: MonthlySummary[];
@@ -37,10 +37,19 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
     ? calculatedCurrentMonthTotal
     : (currentSummary?.totalExpense || 0);
 
-  // Previous month for MoM
-  const currentIndex = sortedSummaries.findIndex(s => s.month === activeMonth);
-  const prevSummary = currentIndex > 0 ? sortedSummaries[currentIndex - 1] : null;
-  const prevTotal = prevSummary?.totalExpense || 0;
+  const today = new Date();
+  const [activeYear, activeMonthNumber] = activeMonth.split('-').map(Number);
+  const daysInActiveMonth = activeYear && activeMonthNumber
+    ? new Date(activeYear, activeMonthNumber, 0).getDate()
+    : 30;
+  const isCurrentActiveMonth = activeMonth === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  // MoM: an in-progress month is compared with the same day range of the previous month,
+  // otherwise early-month totals always look like a huge saving.
+  const prevMonth = getPreviousMonth(activeMonth);
+  const prevTotal = isCurrentActiveMonth
+    ? sumMonthUpToDay(transactions, prevMonth, today.getDate())
+    : (sortedSummaries.find(s => s.month === prevMonth)?.totalExpense || 0);
 
   let momChangePercent: number | null = null;
   if (prevTotal > 0 && currentTotal > 0) {
@@ -57,14 +66,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
     (max, t) => (t.amount > max.amount ? t : max),
     { id: '', amount: 0, item: '無', category: '' }
   );
-
-  // Daily burn rate and projected end of month
-  const today = new Date();
-  const [activeYear, activeMonthNumber] = activeMonth.split('-').map(Number);
-  const daysInActiveMonth = activeYear && activeMonthNumber
-    ? new Date(activeYear, activeMonthNumber, 0).getDate()
-    : 30;
-  const isCurrentActiveMonth = activeMonth === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
   const elapsedDays = isCurrentActiveMonth ? today.getDate() : daysInActiveMonth;
   const dailyBurn = Math.round(currentTotal / Math.max(elapsedDays, 1));
@@ -136,7 +137,9 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                     </>
                   )}
                 </span>
-                <span className="text-slate-400">前期 NT$ {formatAmount(prevTotal)}</span>
+                <span className="text-slate-400">
+                  {isCurrentActiveMonth ? '上月同期' : '前期'} NT$ {formatAmount(prevTotal)}
+                </span>
               </>
             ) : (
               <span className="text-slate-400">歷史基準月</span>

@@ -4,11 +4,10 @@ import { normalizeCategory } from '../constants/categories';
 import { parseAmount } from './gasApi';
 
 // Bump this when the data schema changes to auto-clear stale cached data
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 
 const KEYS = {
   GAS_CONFIG: 'finance_dashboard_gas_config',
-  CUSTOM_TRANSACTIONS: 'finance_dashboard_custom_records',
   CACHED_DATA: 'finance_dashboard_cached_data',
   CACHE_VERSION: 'finance_dashboard_cache_version',
 };
@@ -40,44 +39,6 @@ export const saveGasConfig = (config: GasConfig): void => {
   } catch (e) {
     console.error('Failed to save gas config:', e);
   }
-};
-
-export const getCustomTransactions = (): Transaction[] => {
-  try {
-    const raw = localStorage.getItem(KEYS.CUSTOM_TRANSACTIONS);
-    if (raw) {
-      const records: Transaction[] = JSON.parse(raw);
-      return records.map(r => ({
-        ...r,
-        amount: typeof r.amount === 'number' ? r.amount : parseAmount(r.amount),
-        date: formatDate(r.date),
-        category: normalizeCategory(r.category)
-      }));
-    }
-  } catch (e) {
-    console.error('Failed to load custom transactions:', e);
-  }
-  return [];
-};
-
-export const saveCustomTransactions = (records: Transaction[]): void => {
-  try {
-    localStorage.setItem(KEYS.CUSTOM_TRANSACTIONS, JSON.stringify(records));
-  } catch (e) {
-    console.error('Failed to save custom transactions:', e);
-  }
-};
-
-export const deleteCustomTransaction = (id: string): Transaction[] => {
-  try {
-    const current = getCustomTransactions();
-    const updated = current.filter(r => r.id !== id);
-    saveCustomTransactions(updated);
-    return updated;
-  } catch (e) {
-    console.error('Failed to delete custom transaction:', e);
-  }
-  return [];
 };
 
 export const getCachedData = (): { details: Transaction[]; summary: MonthlySummary[]; lastUpdated: string } | null => {

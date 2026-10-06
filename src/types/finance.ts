@@ -9,7 +9,6 @@ export interface Transaction {
   category: TransactionCategory; // 嚴格限制為五大標準分類
   amount: number;     // 金額
   month: string;      // YYYY-MM
-  isCustom?: boolean; // 是否為手動補登
 }
 
 export interface MonthlySummary {

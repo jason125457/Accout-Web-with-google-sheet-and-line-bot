@@ -15,7 +15,6 @@ import { compareTransactionDates } from '../utils/dateUtils';
 
 interface MonthlyBreakdownPageProps {
   transactions: Transaction[];
-  onDeleteRecord?: (id: string) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -35,7 +34,7 @@ interface MonthData {
   topCategories: { name: string; amount: number }[];
 }
 
-export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ transactions, onDeleteRecord }) => {
+export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ transactions }) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const selectedDetailRef = useRef<HTMLDivElement | null>(null);
 
@@ -105,7 +104,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   if (transactions.length === 0) {
     return (
       <div className="py-20 text-center text-slate-400 text-sm">
-        尚無記帳資料，請先連線 Google 試算表或手動新增。
+        尚無記帳資料，請先連線 Google 試算表，或透過 LINE 記一筆。
       </div>
     );
   }
@@ -285,7 +284,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                   <h2 className="text-sm font-bold text-slate-700 mb-3 px-1">
                     {md.month.slice(0, 4)} 年 {md.month.slice(5, 7)} 月 · 詳細記帳明細
                   </h2>
-                  <TransactionList transactions={selectedTxns} onDeleteRecord={onDeleteRecord} />
+                  <TransactionList transactions={selectedTxns} />
                 </div>
               )}
               </React.Fragment>
