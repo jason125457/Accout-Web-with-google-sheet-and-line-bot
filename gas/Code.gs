@@ -40,6 +40,7 @@ const CONFIG = {
 const TIMEZONE = 'Asia/Taipei';
 const DETAIL_SHEET_NAME = '記帳明細';
 const SUMMARY_SHEET_NAME = '月度彙總';
+const BUDGET_SHEET_NAME = '預算設定';
 
 // 模型備援鏈：Gemini 3.x 使用 thinkingLevel，2.5 系列使用 thinkingBudget（兩者不可同時傳）
 // 兩個 Flash-Lite 各有獨立的免費額度（各 500 RPD），一個 503 滿載時另一個通常可用
@@ -522,7 +523,8 @@ function doGet(e) {
     // v2：回傳已正規化的資料，前端不必再處理時區與千分位
     if (params.v === '2') {
       const records = readRecords(detailSheet);
-      return jsonOutput({ status: 'success', version: 2, records, summary: summarize(records), updatedAt });
+      const budgets = readBudgets(ss);
+      return jsonOutput({ status: 'success', version: 2, records, summary: summarize(records), budgets, updatedAt });
     }
 
     // v1（舊版前端相容）：原始顯示字串
@@ -591,6 +593,52 @@ function readRecords(sheet) {
     });
   }
   return records;
+}
+
+/**
+ * 讀取「預算設定」工作表（A 欄類別、B 欄每月預算）。沒有這個分頁就回傳空物件，前端改用參考值。
+ */
+function readBudgets(ss) {
+  const sheet = ss.getSheetByName(BUDGET_SHEET_NAME);
+  if (!sheet) return {};
+  const budgets = {};
+  sheet.getDataRange().getValues().slice(1).forEach(row => {
+    const category = String(row[0] || '').trim();
+    const amount = typeof row[1] === 'number' ? row[1] : Number(String(row[1]).replace(/[^\d.]/g, ''));
+    if (VALID_CATEGORIES.includes(category) && amount > 0) budgets[category] = amount;
+  });
+  return budgets;
+}
+
+/**
+ * 【手動執行一次】建立「預算設定」工作表，預填近 6 個完整月份各類別的平均支出（取整到百位）當起點。
+ * 已存在時不覆蓋，避免蓋掉你填好的預算。
+ */
+function setupBudgetSheet() {
+  const ss = getSpreadsheet();
+  if (ss.getSheetByName(BUDGET_SHEET_NAME)) {
+    Logger.log('「預算設定」已存在，未做任何變更。');
+    return;
+  }
+
+  const records = readRecords(getDetailSheet(ss));
+  const thisMonth = Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM');
+  const months = [...new Set(records.map(r => r.month).filter(m => /^\d{4}-\d{2}$/.test(m) && m < thisMonth))].sort().slice(-6);
+  const suggest = category => {
+    if (months.length === 0) return '';
+    const total = records
+      .filter(r => r.category === category && months.includes(r.month))
+      .reduce((sum, r) => sum + r.amount, 0);
+    return Math.round(total / months.length / 100) * 100;
+  };
+
+  const sheet = ss.insertSheet(BUDGET_SHEET_NAME);
+  const rows = [['類別', '每月預算']].concat(VALID_CATEGORIES.map(c => [c, suggest(c)]));
+  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+  sheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+  sheet.getRange(2, 2, VALID_CATEGORIES.length, 1).setNumberFormat('#,##0');
+  sheet.getRange(rows.length + 2, 1).setValue('↑ 直接修改 B 欄金額即可，前端下次同步就會套用。留空或 0 代表該類別不設預算。');
+  Logger.log(`✅ 已建立「預算設定」，預填依據：${months.join(', ') || '無歷史資料'}`);
 }
 
 function summarize(records) {

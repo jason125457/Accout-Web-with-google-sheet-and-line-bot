@@ -18,6 +18,7 @@ import { BarChart2, TrendingUp, Filter } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
 import { calculateSixMonthAverage } from '../utils/financeCalculations';
 import { getCurrentMonthString } from '../utils/financeCalculations';
+import { palette, categoryColor } from '../theme/tokens';
 
 interface ExpenseChartsProps {
   monthlySummaries: MonthlySummary[];
@@ -28,15 +29,7 @@ interface ExpenseChartsProps {
   onMonthClick?: (month: string) => void;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  '生活': '#0d9488', // Emerald Teal
-  '家用': '#2563eb', // Royal Blue
-  '社交': '#ec4899', // Hot Pink
-  '娛樂': '#f59e0b', // Amber
-  '雜支': '#64748b', // Slate
-};
 
-const FALLBACK_COLORS = ['#0d9488', '#2563eb', '#ec4899', '#f59e0b', '#64748b'];
 
 export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
   monthlySummaries,
@@ -193,20 +186,20 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
               >
                 <defs>
                   <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={palette.primary} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={palette.primary} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: palette.inkMuted }}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={{ stroke: palette.axis }}
                   tickFormatter={(v) => v.slice(5)}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tick={{ fontSize: 10, fill: palette.inkSubtle }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
@@ -250,7 +243,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 {avgExpense > 0 && (
                   <ReferenceLine
                     y={avgExpense}
-                    stroke="#f59e0b"
+                    stroke={palette.warning}
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
                   />
@@ -258,7 +251,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 {selectedMonth && (
                   <ReferenceLine
                     x={selectedMonth}
-                    stroke="#0d9488"
+                    stroke={palette.primary}
                     strokeDasharray="3 3"
                     strokeWidth={2}
                   />
@@ -266,7 +259,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 <Area
                   type="monotone"
                   dataKey="totalExpense"
-                  stroke="#0d9488"
+                  stroke={palette.primary}
                   strokeWidth={3}
                   fill="url(#trendGradient)"
                   dot={(props: any) => {
@@ -279,8 +272,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                         cx={cx}
                         cy={cy}
                         r={isSelected ? 6 : 4}
-                        fill={isSelected ? '#042f2e' : '#0d9488'}
-                        stroke="#ffffff"
+                        fill={isSelected ? palette.primaryDeep : palette.primary}
+                        stroke={palette.surface}
                         strokeWidth={isSelected ? 2.5 : 1.5}
                         className="cursor-pointer transition-all hover:scale-125"
                         onClick={(e) => {
@@ -292,8 +285,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   }}
                   activeDot={{
                     r: 7,
-                    fill: '#0f766e',
-                    stroke: '#ffffff',
+                    fill: palette.primaryStrong,
+                    stroke: palette.surface,
                     strokeWidth: 2.5,
                     cursor: 'pointer',
                     onClick: (_e: any, payload: any) => {
@@ -309,22 +302,22 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 onClick={handleChartClick}
                 className="cursor-pointer"
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: palette.inkMuted }}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={{ stroke: palette.axis }}
                   tickFormatter={(v) => v.slice(5)}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tick={{ fontSize: 10, fill: palette.inkSubtle }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
+                  cursor={{ fill: palette.hover }}
                   content={({ active, payload }) => {
                     if (!active || !payload || !payload.length) return null;
                     const d = payload[0].payload as MonthlySummary;
@@ -352,7 +345,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 {avgExpense > 0 && (
                   <ReferenceLine
                     y={avgExpense}
-                    stroke="#f59e0b"
+                    stroke={palette.warning}
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
                   />
@@ -360,7 +353,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 {selectedMonth && (
                   <ReferenceLine
                     x={selectedMonth}
-                    stroke="#0d9488"
+                    stroke={palette.primary}
                     strokeDasharray="3 3"
                     strokeWidth={2}
                   />
@@ -377,8 +370,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     return (
                       <Cell
                         key={`bar-${entry.month}`}
-                        fill={isSelected ? '#042f2e' : isOngoing ? '#2dd4bf' : '#0d9488'}
-                        stroke={isSelected ? '#0d9488' : undefined}
+                        fill={isSelected ? palette.primaryDeep : isOngoing ? palette.primarySoft : palette.primary}
+                        stroke={isSelected ? palette.primary : undefined}
                         strokeWidth={isSelected ? 2 : 0}
                       />
                     );
@@ -446,13 +439,13 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   className="cursor-pointer"
                 >
                   {categoryData.map((entry) => {
-                    const color = CATEGORY_COLORS[entry.name] || FALLBACK_COLORS[0];
+                    const color = categoryColor(entry.name);
                     const isSelected = selectedCategory === entry.name;
                     return (
                       <Cell
                         key={`cell-${entry.name}`}
                         fill={color}
-                        stroke={isSelected ? '#0F172A' : '#FFFFFF'}
+                        stroke={isSelected ? palette.ink : palette.surface}
                         strokeWidth={isSelected ? 3 : 1.5}
                         opacity={selectedCategory && selectedCategory !== 'all' && !isSelected ? 0.4 : 1}
                       />
@@ -477,7 +470,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
           <div className="w-full sm:flex-1 space-y-2.5">
             {categoryData.length > 0 ? (
               categoryData.map((cat) => {
-                const color = CATEGORY_COLORS[cat.name] || '#94a3b8';
+                const color = categoryColor(cat.name);
                 const isSelected = selectedCategory === cat.name;
 
                 return (

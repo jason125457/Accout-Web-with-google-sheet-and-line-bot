@@ -15,24 +15,34 @@
 ## 2. Design Tokens
 
 ### 2.1 Color Palette
-- **Canvas Base**: `#F8FAFC` (Slate 50, crisp clean backdrop)
-- **Card Surface**: `#FFFFFF` (Pure white) with 1px hairline border `rgba(226, 232, 240, 0.85)`
-- **Ink Primary**: `#0F172A` (Slate 900 - high contrast, authoritative)
-- **Ink Secondary**: `#475569` (Slate 600 - clear readability)
-- **Ink Muted / Captions**: `#94A3B8` (Slate 400 - secondary cues)
-- **Brand Accents**:
-  - **Teal Emerald (Primary Active)**: `#0D9488` / `#00A87E`
-  - **Cobalt Violet (Secondary Accent)**: `#4F46E5` / `#494FDF`
-  - **Amber Warning (Large Expenses)**: `#F59E0B`
-  - **Rose Negative (Expense Delta)**: `#E11D48`
-  - **Emerald Positive (Savings Delta)**: `#059669`
+
+**Source of truth: [`src/theme/tokens.ts`](src/theme/tokens.ts).** It feeds both `tailwind.config.ts`
+(utility classes) and Recharts (raw hex). Components must not hard-code hex values — add a token instead.
+
+| Role | Token / class | Value |
+|---|---|---|
+| Page background (warm cream) | `bg-canvas` | `#FBF9F5` |
+| Card surface / hover | `bg-surface`, `hover:bg-surface-hover` | `#FFFFFF` / `#F5F2EB` |
+| Hairline border | `border-line` | `#ECE7DE` |
+| Text primary / secondary / caption | `text-ink`, `text-ink-muted`, `text-ink-subtle` | `#0F172A` / `#64748B` / `#94A3B8` |
+| Primary (teal) | `bg-primary`, `primary-strong`, `primary-deep`, `primary-soft` | `#0D9488` / `#0F766E` / `#042F2E` / `#2DD4BF` |
+| Gold accent (sidebar active, highlights) | `gold`, `gold-strong`, `gold-deep` | `#E5A93C` / `#D4982E` / `#B87C1E` |
+| Dark sidebar & dark cards | `bg-night`, `night-raised`, `night-card`, `night-line` | `#111A18` / `#182622` / `#14201D` / `#233530` |
+| Warning (large amounts, averages) | `palette.warning` / `amber-500` | `#F59E0B` |
+| Over budget | `rose-600` / `rose-500` | `#E11D48` |
 
 ### 2.2 Category Color Mapping
-- **生活 (Life)**: `#0D9488` (Teal)
-- **雜支 (Misc)**: `#64748B` (Slate)
-- **娛樂 (Entertainment)**: `#F59E0B` (Amber)
-- **家用 (Home)**: `#2563EB` (Royal Blue)
-- **社交 (Social)**: `#EC4899` (Hot Pink)
+Use `categoryColor(category)` from `src/theme/tokens.ts` for chart fills and dots.
+- **生活**: `#0D9488` (Teal) · **家用**: `#2563EB` (Blue) · **社交**: `#EC4899` (Pink) · **娛樂**: `#F59E0B` (Amber) · **雜支**: `#64748B` (Slate)
+
+### 2.2b Budgets
+- Per-category monthly budgets come from the 「預算設定」 sheet (GAS `setupBudgetSheet()` creates it).
+- Categories without a budget fall back to a reference split of the six-month average and are labelled 「參考」.
+- Over-budget states always carry text (「超支 120%」), never color alone.
+
+### 2.2c Mobile first screen
+On `< sm` the dashboard opens with `MonthOverviewCard`: spent this month, budget remaining
+(with daily allowance for the current month), and the five most recent records.
 
 ### 2.3 Typography
 - **Primary Font**: `Plus Jakarta Sans`, `Inter`, system-ui

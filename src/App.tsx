@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'rea
 import { Sidebar } from './components/Sidebar';
 import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
+import { MonthOverviewCard } from './components/MonthOverviewCard';
 import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
 import { SyncModal } from './components/SyncModal';
-import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource } from './types/finance';
+import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource, CategoryBudgets } from './types/finance';
 import { fetchFromGas, normalizeMonthString } from './utils/gasApi';
 import { DEMO_TRANSACTIONS, DEMO_SUMMARIES } from './utils/demoData';
 import { calculateDynamicMonthlySummaries, getCurrentMonthString } from './utils/financeCalculations';
@@ -26,6 +27,7 @@ const MonthlyBreakdownPage = lazy(() =>
 export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [monthlySummaries, setMonthlySummaries] = useState<MonthlySummary[]>([]);
+  const [budgets, setBudgets] = useState<CategoryBudgets>({});
   const [gasConfig, setGasConfig] = useState<GasConfig>(getGasConfig());
   const [dataSource, setDataSource] = useState<DataSource>('demo');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -96,18 +98,25 @@ export const App: React.FC = () => {
     const details = [...DEMO_TRANSACTIONS];
     setTransactions(details);
     setMonthlySummaries(DEMO_SUMMARIES);
+    setBudgets({});
     selectDefaultMonth(details, DEMO_SUMMARIES);
     setDataSource('demo');
   };
 
   // Applies a successful GAS response to state, cache and config. Returns the sync time string.
-  const applyCloudData = (details: Transaction[], summary: MonthlySummary[], config: GasConfig): string => {
+  const applyCloudData = (
+    details: Transaction[],
+    summary: MonthlySummary[],
+    newBudgets: CategoryBudgets,
+    config: GasConfig
+  ): string => {
     setTransactions(details);
     setMonthlySummaries(summary);
     selectDefaultMonth(details, summary);
     setDataSource('cloud');
     setSyncError(null);
-    saveCachedData({ details, summary });
+    setBudgets(newBudgets);
+    saveCachedData({ details, summary, budgets: newBudgets });
     const nowStr = new Date().toLocaleString('zh-TW');
     const updatedConfig = { ...config, lastSyncTime: nowStr };
     setGasConfig(updatedConfig);
@@ -134,6 +143,7 @@ export const App: React.FC = () => {
         const details = cleanDetails;
         setTransactions(details);
         setMonthlySummaries(cleanSummary);
+        setBudgets(cache.budgets ?? {});
         selectDefaultMonth(details, cleanSummary);
         setDataSource('cache');
         setIsLoading(false);
@@ -150,7 +160,7 @@ export const App: React.FC = () => {
       setIsSyncing(false);
 
       if (res.success && res.details && res.summary) {
-        applyCloudData(res.details, res.summary, savedConfig);
+        applyCloudData(res.details, res.summary, res.budgets ?? {}, savedConfig);
       } else {
         const message = res.message || '無法連線 Google 試算表。';
         if (!hasCache) {
@@ -177,7 +187,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      const nowStr = applyCloudData(res.details, res.summary, gasConfig);
+      const nowStr = applyCloudData(res.details, res.summary, res.budgets ?? {}, gasConfig);
       showToast('success', `同步成功！已由 Google 雲端更新至最新資料 (${nowStr})。`);
     } else {
       const message = res.message || '連線 Google 失敗，請確認 Apps Script 部署。';
@@ -194,7 +204,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      applyCloudData(res.details, res.summary, newConfig);
+      applyCloudData(res.details, res.summary, res.budgets ?? {}, newConfig);
       showToast('success', 'Google 試算表連線成功！已載入最新雲端資料。');
       return true;
     } else {
@@ -281,7 +291,7 @@ export const App: React.FC = () => {
   }, [transactions, monthlySummaries]);
 
   return (
-    <div className="min-h-screen bg-[#FBF9F5] text-slate-900 flex overflow-x-hidden w-full max-w-[100vw] relative">
+    <div className="min-h-screen bg-canvas text-slate-900 flex overflow-x-hidden w-full max-w-[100vw] relative">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] right-3.5 sm:right-5 z-50 animate-bounce-short max-w-[90vw]">
@@ -387,6 +397,20 @@ export const App: React.FC = () => {
                 </div>
               )}
 
+              {/* 手機首屏：本月已花 / 預算剩餘 / 最近記帳 */}
+              <div className="sm:hidden">
+                <MonthOverviewCard
+                  transactions={transactions}
+                  monthlySummaries={dynamicMonthlySummaries}
+                  selectedMonth={filters.selectedMonth}
+                  budgets={budgets}
+                  onViewAll={() => document.getElementById('transactions')?.scrollIntoView({
+                    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                    block: 'start',
+                  })}
+                />
+              </div>
+
               {/* Row 1: 4 大核心 KPI 指標卡 (3 淺 + 1 深反差卡) */}
               <MetricCards
                 monthlySummaries={dynamicMonthlySummaries}
@@ -407,7 +431,7 @@ export const App: React.FC = () => {
               {/* Row 3: 下層雙分欄佈局 (近期交易 7 欄 : 預算進度與生活洞察 5 欄) */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 min-w-0">
                 {/* 左側 7 欄：近期交易明細清單 (支援時間/金額排序、大額過濾、關鍵字搜尋) */}
-                <div className="xl:col-span-7 min-w-0">
+                <div id="transactions" className="xl:col-span-7 min-w-0 scroll-mt-4">
                   <TransactionList
                     transactions={filteredTransactions}
                     selectedMonth={filters.selectedMonth}
@@ -429,6 +453,7 @@ export const App: React.FC = () => {
                     transactions={transactions}
                     monthlySummaries={dynamicMonthlySummaries}
                     selectedMonth={filters.selectedMonth}
+                    budgets={budgets}
                   />
                 </div>
               </div>
@@ -444,7 +469,7 @@ export const App: React.FC = () => {
         </main>
 
         {/* Minimal Footer with iOS Safe Area */}
-        <footer className="border-t border-[#ECE7DE] bg-white/60 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-slate-400">
+        <footer className="border-t border-line bg-white/60 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-slate-400">
           <p>個人財務管理儀表板 · LINE Bot + Google Sheets + React & Tailwind</p>
         </footer>
       </div>

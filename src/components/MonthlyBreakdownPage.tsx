@@ -12,20 +12,12 @@ import { ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Transaction } from '../types/finance';
 import { TransactionList } from './TransactionList';
 import { compareTransactionDates } from '../utils/dateUtils';
+import { palette, categoryColor } from '../theme/tokens';
 
 interface MonthlyBreakdownPageProps {
   transactions: Transaction[];
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  '生活': '#0d9488',
-  '雜支': '#64748b',
-  '娛樂': '#f59e0b',
-  '家用': '#2563eb',
-  '社交': '#ec4899',
-  '未分類': '#94a3b8',
-};
-const FALLBACK_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#ec4899', '#64748b'];
 
 interface MonthData {
   month: string;
@@ -125,8 +117,8 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
         {/* Category Legend */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {allCategories.map((cat, i) => {
-            const color = CATEGORY_COLORS[cat] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+          {allCategories.map((cat) => {
+            const color = categoryColor(cat);
             return (
               <div key={cat} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
@@ -149,17 +141,17 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
               }}
               style={{ cursor: 'pointer' }}
             >
-              <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="2 2" vertical={false} stroke={palette.grid} />
               <XAxis
                 dataKey="month"
                 tickFormatter={formatMonthLabel}
-                tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                tick={{ fontSize: 11, fill: palette.inkMuted, fontWeight: 500 }}
                 tickLine={false}
                 axisLine={false}
                 dy={6}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: '#64748b' }}
+                tick={{ fontSize: 11, fill: palette.inkMuted }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `NT$${(v / 1000).toFixed(0)}k`}
@@ -189,7 +181,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                 }}
               />
               {allCategories.map((cat, i) => {
-                const color = CATEGORY_COLORS[cat] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+                const color = categoryColor(cat);
                 return (
                   <Bar
                     key={cat}
@@ -247,8 +239,8 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
                 {/* Top 3 categories */}
                 <div className="space-y-1.5">
-                  {md.topCategories.slice(0, 3).map((cat, i) => {
-                    const color = CATEGORY_COLORS[cat.name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+                  {md.topCategories.slice(0, 3).map((cat) => {
+                    const color = categoryColor(cat.name);
                     const pct = md.total > 0 ? (cat.amount / md.total) * 100 : 0;
                     return (
                       <div key={cat.name} className="flex items-center gap-2">

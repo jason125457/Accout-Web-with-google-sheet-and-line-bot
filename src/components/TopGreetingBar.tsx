@@ -37,7 +37,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
         {/* Mobile Hamburger Button */}
         <button
           onClick={onOpenMobileSidebar}
-          className="lg:hidden w-11 h-11 flex items-center justify-center rounded-2xl bg-white border border-[#ECE7DE] text-slate-700 hover:bg-[#F5F2EB] shadow-sm transition-colors shrink-0"
+          className="lg:hidden w-11 h-11 flex items-center justify-center rounded-2xl bg-white border border-line text-slate-700 hover:bg-surface-hover shadow-sm transition-colors shrink-0"
           aria-label="打開導覽選單"
         >
           <Menu className="w-5 h-5" />
@@ -49,7 +49,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
               {greeting}，理財達人 {emoji}
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium truncate">
+          <p className="hidden sm:block text-sm text-slate-500 mt-0.5 font-medium truncate">
             今天是管理財務的好日子 · 清楚掌握收支節奏
           </p>
         </div>
@@ -59,7 +59,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
       <div className={`flex items-center ${showMonthSelector ? 'justify-between' : 'justify-end'} sm:justify-end gap-2 w-full sm:w-auto shrink-0`}>
         {/* Month Selector Pill */}
         {showMonthSelector && <div className="relative flex-1 sm:flex-initial min-w-0">
-          <div className="min-h-11 flex items-center justify-between gap-2 bg-white border border-[#ECE7DE] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-slate-300 transition-colors w-full">
+          <div className="min-h-11 flex items-center justify-between gap-2 bg-white border border-line rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-slate-300 transition-colors w-full">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select
@@ -86,7 +86,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
         <button
           onClick={onRefresh}
           disabled={isSyncing}
-          className="min-h-11 px-3 py-2 rounded-2xl bg-white border border-[#ECE7DE] hover:bg-slate-50 text-slate-700 shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5 text-xs font-semibold shrink-0"
+          className="min-h-11 px-3 py-2 rounded-2xl bg-white border border-line hover:bg-slate-50 text-slate-700 shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5 text-xs font-semibold shrink-0"
           title="重新同步 Google 試算表"
           aria-label="重新同步 Google 試算表"
         >

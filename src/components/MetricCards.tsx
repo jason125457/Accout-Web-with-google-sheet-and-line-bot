@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
 import { calculateSixMonthAverage, getPreviousMonth, sumMonthUpToDay } from '../utils/financeCalculations';
+import { palette } from '../theme/tokens';
 
 interface MetricCardsProps {
   monthlySummaries: MonthlySummary[];
@@ -156,7 +157,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               strokeWidth="2.5"
               strokeLinecap="round"
             />
-            <circle cx="120" cy="12" r="3.5" fill="#0D9488" />
+            <circle cx="120" cy="12" r="3.5" fill={palette.primary} />
           </svg>
         </div>
       </div>

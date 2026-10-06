@@ -16,7 +16,7 @@
   }
 
   body {
-    @apply bg-[#FBF9F5] text-slate-900;
+    @apply bg-canvas text-slate-900;
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -36,7 +36,7 @@
 @layer components {
   /* Warm modern fintech card surface */
   .fintech-card {
-    @apply bg-white border border-[#ECE7DE] rounded-[24px] transition-all duration-200;
+    @apply bg-white border border-line rounded-[24px] transition-all duration-200;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 4px 12px -2px rgba(28, 25, 23, 0.03);
   }
 
@@ -46,7 +46,7 @@
 
   /* Deep dark card (Card 4 & Quote Card) */
   .fintech-card-dark {
-    @apply bg-[#14201D] text-white border border-[#233530] rounded-[24px] transition-all duration-200;
+    @apply bg-night-card text-white border border-night-line rounded-[24px] transition-all duration-200;
     box-shadow: 0 6px 20px -2px rgba(17, 26, 24, 0.2);
   }
 
@@ -82,12 +82,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: theme('colors.slate.300');
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: theme('colors.slate.400');
 }
 
 @keyframes bounceShort {

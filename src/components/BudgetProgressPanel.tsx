@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ShoppingBag, Coffee, Car, Film, Sparkles, Quote } from 'lucide-react';
-import { Transaction, MonthlySummary, TransactionCategory } from '../types/finance';
-import { calculateSixMonthAverage } from '../utils/financeCalculations';
+import { Transaction, MonthlySummary, TransactionCategory, CategoryBudgets } from '../types/finance';
+import { calculateSixMonthAverage, resolveCategoryBudgets } from '../utils/financeCalculations';
 import { STANDARD_CATEGORIES } from '../constants/categories';
 import { parseFlexibleDate } from '../utils/dateUtils';
 
@@ -9,6 +9,7 @@ interface BudgetProgressPanelProps {
   transactions: Transaction[];
   monthlySummaries: MonthlySummary[];
   selectedMonth: string;
+  budgets: CategoryBudgets;
 }
 
 const CATEGORY_META: Record<
@@ -26,6 +27,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
   transactions,
   monthlySummaries,
   selectedMonth,
+  budgets,
 }) => {
   // Determine reference month for budget progress (if 'all', default to latest active month)
   const targetMonth = useMemo(() => {
@@ -58,17 +60,14 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
     return calculateSixMonthAverage(monthlySummaries, targetMonth);
   }, [monthlySummaries, targetMonth]);
 
-  // Define dynamic monthly budgets based on proportion of 6-month average
-  const categoryBudgets: Record<TransactionCategory, number> = useMemo(() => {
-    const base = sixMonthAvg > 0 ? sixMonthAvg : 20000;
-    return {
-      '生活': Math.round(base * 0.45),
-      '家用': Math.round(base * 0.25),
-      '社交': Math.round(base * 0.12),
-      '娛樂': Math.round(base * 0.10),
-      '雜支': Math.round(base * 0.08),
-    };
-  }, [sixMonthAvg]);
+  const categoryBudgets = useMemo(
+    () => resolveCategoryBudgets(budgets, sixMonthAvg),
+    [budgets, sixMonthAvg]
+  );
+  const customCount = STANDARD_CATEGORIES.filter(cat => categoryBudgets[cat].isCustom).length;
+  const budgetBadge = customCount === STANDARD_CATEGORIES.length
+    ? '自訂預算'
+    : customCount > 0 ? '部分自訂' : '參考值 · 尚未設定預算';
 
   // Weekend vs Weekday insight calculation for target month
   const weekendInsight = useMemo(() => {
@@ -98,7 +97,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
           <div className="flex items-center gap-2">
             <h3 className="text-base font-extrabold text-slate-900 tracking-tight">類別支出進度</h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-              近半年分配參考
+              {budgetBadge}
             </span>
           </div>
           <span className="text-xs font-semibold text-slate-500 font-medium">
@@ -112,7 +111,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
             const spent = categoryTotals[cat];
             const meta = CATEGORY_META[cat] || CATEGORY_META['生活'];
             const Icon = meta.icon;
-            const budget = categoryBudgets[cat];
+            const { amount: budget, isCustom } = categoryBudgets[cat];
             const rawPct = Math.round((spent / budget) * 100);
             const barPct = Math.min(rawPct, 100);
             const isOver = spent > budget;
@@ -125,6 +124,9 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <span className="font-bold text-slate-800">{cat}</span>
+                    {!isCustom && customCount > 0 && (
+                      <span className="text-[10px] font-semibold text-slate-400">參考</span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 sm:gap-2 tabular-nums shrink-0">
@@ -136,7 +138,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
                         isOver ? 'text-rose-600' : 'text-slate-700'
                       }`}
                     >
-                      {rawPct}%
+                      {isOver ? `超支 ${rawPct}%` : `${rawPct}%`}
                     </span>
                   </div>
                 </div>
@@ -185,7 +187,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
 
         {/* Decorative Golden Line */}
         <div className="mt-4 pt-2">
-          <div className="w-8 h-1 rounded-full bg-gradient-to-r from-[#E5A93C] to-emerald-400" />
+          <div className="w-8 h-1 rounded-full bg-gradient-to-r from-gold to-emerald-400" />
         </div>
       </div>
     </div>

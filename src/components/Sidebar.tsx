@@ -76,11 +76,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }[dataSource];
 
   const content = (
-    <div className="flex flex-col h-full bg-[#111A18] text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-night text-slate-300 select-none">
       {/* 1. Brand Logo */}
       <div className="px-6 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+1.25rem))] pb-6 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#E5A93C] to-[#B87C1E] flex items-center justify-center text-[#111A18] shadow-md shadow-black/20">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-gold to-gold-deep flex items-center justify-center text-night shadow-md shadow-black/20">
             <Wallet className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
@@ -118,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }}
           className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
             activeTab === 'dashboard'
-              ? 'bg-gradient-to-r from-[#E5A93C] to-[#D4982E] text-[#111A18] shadow-lg shadow-[#E5A93C]/20'
+              ? 'bg-gradient-to-r from-gold to-gold-strong text-night shadow-lg shadow-gold/20'
               : 'text-slate-300 hover:bg-white/5 hover:text-white'
           }`}
         >
@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }}
           className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
             activeTab === 'monthly'
-              ? 'bg-gradient-to-r from-[#E5A93C] to-[#D4982E] text-[#111A18] shadow-lg shadow-[#E5A93C]/20'
+              ? 'bg-gradient-to-r from-gold to-gold-strong text-night shadow-lg shadow-gold/20'
               : 'text-slate-300 hover:bg-white/5 hover:text-white'
           }`}
         >
@@ -166,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 3. Bottom Cloud Status Card */}
       <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-white/5">
-        <div className="bg-[#182622] rounded-2xl p-3.5 border border-white/5 space-y-3">
+        <div className="bg-night-raised rounded-2xl p-3.5 border border-white/5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span

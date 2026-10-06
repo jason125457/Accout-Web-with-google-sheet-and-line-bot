@@ -16,6 +16,9 @@ export interface MonthlySummary {
   totalExpense: number; // 當月總支出
 }
 
+/** User-defined monthly budget per category, from the 「預算設定」 sheet. Missing = not set. */
+export type CategoryBudgets = Partial<Record<TransactionCategory, number>>;
+
 export interface CategorySummary {
   category: string;
   totalAmount: number;

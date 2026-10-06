@@ -1,6 +1,6 @@
-import { Transaction, MonthlySummary } from '../types/finance';
+import { Transaction, MonthlySummary, CategoryBudgets, TransactionCategory } from '../types/finance';
 import { formatDate, compareTransactionDates } from './dateUtils';
-import { normalizeCategory } from '../constants/categories';
+import { normalizeCategory, STANDARD_CATEGORIES } from '../constants/categories';
 
 /**
  * Converts any month-like raw value to a clean "YYYY-MM" string.
@@ -48,6 +48,7 @@ export interface GasFetchResult {
   message?: string;
   details?: Transaction[];
   summary?: MonthlySummary[];
+  budgets?: CategoryBudgets;
   updatedAt?: string;
 }
 
@@ -158,6 +159,18 @@ export function normalizeGasRecords(rawRecords: any[]): Transaction[] {
   return transactions;
 }
 
+export function normalizeBudgets(raw: unknown): CategoryBudgets {
+  const budgets: CategoryBudgets = {};
+  if (!raw || typeof raw !== 'object') return budgets;
+  Object.entries(raw as Record<string, unknown>).forEach(([key, value]) => {
+    const amount = parseAmount(value);
+    if ((STANDARD_CATEGORIES as readonly string[]).includes(key) && amount > 0) {
+      budgets[key as TransactionCategory] = amount;
+    }
+  });
+  return budgets;
+}
+
 // Convert 2D array or object array from GAS into MonthlySummary[]
 export function normalizeGasSummary(rawSummary: any[]): MonthlySummary[] {
   if (!Array.isArray(rawSummary) || rawSummary.length === 0) return [];
@@ -244,6 +257,7 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
       success: true,
       details,
       summary,
+      budgets: normalizeBudgets(data.budgets),
       updatedAt: data.updatedAt || new Date().toISOString()
     };
   } catch (error: any) {

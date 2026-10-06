@@ -1,4 +1,4 @@
-import { GasConfig, Transaction, MonthlySummary } from '../types/finance';
+import { GasConfig, Transaction, MonthlySummary, CategoryBudgets } from '../types/finance';
 import { formatDate } from './dateUtils';
 import { normalizeCategory } from '../constants/categories';
 import { parseAmount } from './gasApi';
@@ -41,7 +41,7 @@ export const saveGasConfig = (config: GasConfig): void => {
   }
 };
 
-export const getCachedData = (): { details: Transaction[]; summary: MonthlySummary[]; lastUpdated: string } | null => {
+export const getCachedData = (): { details: Transaction[]; summary: MonthlySummary[]; budgets?: CategoryBudgets; lastUpdated: string } | null => {
   try {
     const raw = localStorage.getItem(KEYS.CACHED_DATA);
     if (raw) {
@@ -68,7 +68,7 @@ export const getCachedData = (): { details: Transaction[]; summary: MonthlySumma
   return null;
 };
 
-export const saveCachedData = (data: { details: Transaction[]; summary: MonthlySummary[] }): void => {
+export const saveCachedData = (data: { details: Transaction[]; summary: MonthlySummary[]; budgets?: CategoryBudgets }): void => {
   try {
     localStorage.setItem(KEYS.CACHED_DATA, JSON.stringify({
       ...data,

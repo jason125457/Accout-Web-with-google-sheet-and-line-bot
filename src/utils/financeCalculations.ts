@@ -1,4 +1,5 @@
-import { MonthlySummary, Transaction } from '../types/finance';
+import { MonthlySummary, Transaction, TransactionCategory, CategoryBudgets } from '../types/finance';
+import { STANDARD_CATEGORIES } from '../constants/categories';
 
 /**
  * Returns current month string in "YYYY-MM" format based on local user time.
@@ -93,4 +94,37 @@ export function calculateSixMonthAverage(
 
   const sum = targetMonths.reduce((acc, cur) => acc + cur.totalExpense, 0);
   return Math.round(sum / targetMonths.length);
+}
+
+// Fallback split of the 6-month average, used only for categories without a user-set budget.
+const REFERENCE_BUDGET_SHARE: Record<TransactionCategory, number> = {
+  '生活': 0.45,
+  '家用': 0.25,
+  '社交': 0.12,
+  '娛樂': 0.10,
+  '雜支': 0.08,
+};
+
+export interface ResolvedBudget {
+  amount: number;
+  isCustom: boolean; // true = from the 「預算設定」 sheet, false = reference estimate
+}
+
+/**
+ * Per-category monthly budget: the user's own value when set, otherwise a reference
+ * estimate derived from the six-month average (or NT$20,000 with no history).
+ */
+export function resolveCategoryBudgets(
+  custom: CategoryBudgets,
+  sixMonthAvg: number
+): Record<TransactionCategory, ResolvedBudget> {
+  const base = sixMonthAvg > 0 ? sixMonthAvg : 20000;
+  return Object.fromEntries(
+    STANDARD_CATEGORIES.map(cat => {
+      const own = custom[cat];
+      return [cat, own && own > 0
+        ? { amount: own, isCustom: true }
+        : { amount: Math.round(base * REFERENCE_BUDGET_SHARE[cat]), isCustom: false }];
+    })
+  ) as Record<TransactionCategory, ResolvedBudget>;
 }

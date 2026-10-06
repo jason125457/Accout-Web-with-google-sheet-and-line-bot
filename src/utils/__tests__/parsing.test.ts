@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords } from '../gasApi';
+import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
 import { formatDate } from '../dateUtils';
-import { getPreviousMonth, sumMonthUpToDay } from '../financeCalculations';
+import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
 
@@ -95,5 +95,19 @@ describe('month-over-month helpers', () => {
     });
     const list = [tx('2026-09-01', 100), tx('2026-09-06 23:59:00', 50), tx('2026-09-07', 1000), tx('2026-10-01', 7)];
     expect(sumMonthUpToDay(list, '2026-09', 6)).toBe(150);
+  });
+});
+
+describe('budgets', () => {
+  it('normalizeBudgets keeps valid categories with positive amounts', () => {
+    expect(normalizeBudgets({ '生活': '12,000', '家用': 0, '旅遊': 500, '娛樂': 3000 }))
+      .toEqual({ '生活': 12000, '娛樂': 3000 });
+    expect(normalizeBudgets(undefined)).toEqual({});
+  });
+
+  it('resolveCategoryBudgets prefers custom values and falls back to the reference split', () => {
+    const r = resolveCategoryBudgets({ '生活': 9000 }, 10000);
+    expect(r['生活']).toEqual({ amount: 9000, isCustom: true });
+    expect(r['家用']).toEqual({ amount: 2500, isCustom: false });
   });
 });

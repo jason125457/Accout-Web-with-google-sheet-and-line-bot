@@ -50,6 +50,7 @@ account_web/
 │   ├── components/
 │   │   ├── Sidebar.tsx        # 左側導覽、連線狀態、同步、雲端設定入口
 │   │   ├── TopGreetingBar.tsx # 問候語、分析月份選單、同步按鈕
+│   │   ├── MonthOverviewCard.tsx # 手機首屏：本月已花、預算剩餘、最近 5 筆
 │   │   ├── MetricCards.tsx    # 4 大 KPI（當月支出 vs 上月同期、半年均線、最高單筆、月底推估）
 │   │   ├── ExpenseCharts.tsx  # 柱狀/走勢雙視圖 + 類別甜甜圈圖 (支援 Drill-down 連動篩選)
 │   │   ├── BudgetProgressPanel.tsx # 類別支出進度 + 週末/平日洞察
@@ -57,6 +58,7 @@ account_web/
 │   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁（React.lazy 延遲載入）
 │   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
 │   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
+│   ├── theme/tokens.ts       # 設計 Token（顏色唯一來源，Tailwind 與 Recharts 共用）
 │   ├── types/finance.ts       # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
 │   ├── utils/
 │   │   ├── gasApi.ts          # GAS 連線；v2 records 與 v1 顯示字串兩種格式的正規化
@@ -114,15 +116,10 @@ account_web/
 ## 🎨 4. 設計規範摘要 (Design Tokens)
 
 詳見 [`DESIGN.md`](./DESIGN.md)，以下為速查摘要：
-- **風格基調**：Revolut & Stripe 金融科技風格（白底、高呼吸感、1px 髮絲邊框、低彩度卡片）。
-- **色彩 Token**：
-  - 背景：`#F8FAFC` (`bg-slate-50`)
-  - 卡片：`#FFFFFF` (`border border-slate-200/80 rounded-3xl shadow-sm`)
-  - 核心字色：`#0F172A` (`text-slate-900`)，副字色：`#64748B` (`text-slate-500`)
-  - 翡翠綠 (Primary)：`#0D9488` (`teal-600`)
-  - 冷靛藍 (Accent)：`#6366F1` / `#4F46E5` (`indigo-600`)
-  - 琥珀橘 (Warning / 大額)：`#F59E0B` (`amber-500`)
-  - 玫瑰紅 (負向 / 超支)：`#E11D48` (`rose-600`)
+- **風格基調**：暖米白底的金融科技風格（1px 髮絲邊框、低彩度白卡、深色側欄 + 金色強調）。
+- **色彩 Token**：唯一來源是 `src/theme/tokens.ts`，透過 `tailwind.config.ts` 提供 `bg-canvas`、`border-line`、`text-ink-muted`、`bg-primary`、`bg-gold`、`bg-night` 等 class；Recharts 直接 import `palette` / `categoryColor`。**元件內禁止寫死 hex 色碼。**
+- **預算**：來自試算表「預算設定」分頁（doGet v2 的 `budgets`），未設定的類別以半年均值比例當「參考」值（`resolveCategoryBudgets`）。
+- **手機首屏**：`MonthOverviewCard`（本月已花 / 預算剩餘 / 最近 5 筆），僅在 `< sm` 顯示。
 - **數字規範**：所有金額數值必須強制加上 **`tabular-nums`**（避免跳動對齊）與 **`tracking-tight`**。
 
 ---
