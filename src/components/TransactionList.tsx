@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ShoppingBag,
-  Coffee,
-  Car,
-  Film,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  ArrowUpDown,
-  Flame
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ArrowUpDown, Flame, CalendarDays } from 'lucide-react';
 import { Transaction } from '../types/finance';
 import { STANDARD_CATEGORIES } from '../constants/categories';
+import { categoryIcon } from '../constants/categoryIcons';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -29,13 +20,13 @@ interface TransactionListProps {
 
 const CATEGORY_ICONS: Record<
   string,
-  { icon: React.FC<{ className?: string }>; bg: string; text: string; pillBg: string; pillText: string }
+  { bg: string; text: string; pillBg: string; pillText: string }
 > = {
-  '生活': { icon: ShoppingBag, bg: 'bg-teal-50', text: 'text-teal-600', pillBg: 'bg-teal-50', pillText: 'text-teal-700' },
-  '家用': { icon: Coffee, bg: 'bg-blue-50', text: 'text-blue-600', pillBg: 'bg-blue-50', pillText: 'text-blue-700' },
-  '社交': { icon: Coffee, bg: 'bg-pink-50', text: 'text-pink-600', pillBg: 'bg-pink-50', pillText: 'text-pink-700' },
-  '娛樂': { icon: Film, bg: 'bg-amber-50', text: 'text-amber-600', pillBg: 'bg-amber-50', pillText: 'text-amber-700' },
-  '雜支': { icon: Car, bg: 'bg-slate-100', text: 'text-slate-600', pillBg: 'bg-slate-100', pillText: 'text-slate-700' },
+  '生活': { bg: 'bg-teal-50', text: 'text-teal-600', pillBg: 'bg-teal-50', pillText: 'text-teal-700' },
+  '家用': { bg: 'bg-blue-50', text: 'text-blue-600', pillBg: 'bg-blue-50', pillText: 'text-blue-700' },
+  '社交': { bg: 'bg-pink-50', text: 'text-pink-600', pillBg: 'bg-pink-50', pillText: 'text-pink-700' },
+  '娛樂': { bg: 'bg-amber-50', text: 'text-amber-600', pillBg: 'bg-amber-50', pillText: 'text-amber-700' },
+  '雜支': { bg: 'bg-slate-100', text: 'text-slate-600', pillBg: 'bg-slate-100', pillText: 'text-slate-700' },
 };
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -88,7 +79,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             {/* Active Month Filter Pill with Reset Button */}
             {selectedMonth && (
               <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-xs font-bold animate-fade-in shrink-0">
-                <span>📅 {selectedMonth}</span>
+                <CalendarDays className="w-3 h-3" aria-hidden="true" />
+                <span>{selectedMonth}</span>
                 {onClearMonth && (
                   <button
                     onClick={onClearMonth}
@@ -203,7 +195,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         {currentRecords.length > 0 ? (
           currentRecords.map((t) => {
             const meta = CATEGORY_ICONS[t.category] || CATEGORY_ICONS['生活'];
-            const Icon = meta.icon;
+            const Icon = categoryIcon(t.category);
             const isBig = t.amount >= 1000;
 
             return (

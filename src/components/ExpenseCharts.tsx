@@ -14,7 +14,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { BarChart2, TrendingUp, Filter } from 'lucide-react';
+import { BarChart2, TrendingUp, Filter, CalendarDays } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
 import { calculateSixMonthAverage } from '../utils/financeCalculations';
 import { getCurrentMonthString } from '../utils/financeCalculations';
@@ -113,7 +113,8 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                   aria-label={`取消 ${selectedMonth} 月份篩選`}
                   title="取消月份篩選"
                 >
-                  📅 分析月份：{selectedMonth}
+                  <CalendarDays className="w-3 h-3" aria-hidden="true" />
+                  分析月份：{selectedMonth}
                   <span aria-hidden="true">✕</span>
                 </button>
               )}
@@ -234,7 +235,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                           半年均線：{formatNTD(avgExpense)}
                         </div>
                         <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10">
-                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '👉 點擊切換下方交易明細'}</span>
+                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '點擊切換下方交易明細'}</span>
                         </div>
                       </div>
                     );
@@ -336,7 +337,7 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                           {formatNTD(d.totalExpense)}
                         </div>
                         <div className="text-[10px] text-teal-300 font-semibold pt-1 border-t border-white/10">
-                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '👉 點擊切換下方交易明細'}</span>
+                          <span>{isSelected ? '已選取，可按上方 ✕ 取消篩選' : '點擊切換下方交易明細'}</span>
                         </div>
                       </div>
                     );

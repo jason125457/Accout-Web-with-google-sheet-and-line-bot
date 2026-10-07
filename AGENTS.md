@@ -51,6 +51,7 @@ account_web/
 │   │   ├── Sidebar.tsx        # 左側導覽、連線狀態、同步、雲端設定入口
 │   │   ├── TopGreetingBar.tsx # 問候語、分析月份選單、同步按鈕
 │   │   ├── MonthOverviewCard.tsx # 手機首屏：本月已花、預算剩餘、最近 5 筆
+│   │   ├── DashboardSkeleton.tsx # 首次載入（無快取）時的骨架畫面
 │   │   ├── MetricCards.tsx    # 4 大 KPI（當月支出 vs 上月同期、半年均線、最高單筆、月底推估）
 │   │   ├── ExpenseCharts.tsx  # 柱狀/走勢雙視圖 + 類別甜甜圈圖 (支援 Drill-down 連動篩選)
 │   │   ├── BudgetProgressPanel.tsx # 類別支出進度 + 週末/平日洞察
@@ -58,6 +59,7 @@ account_web/
 │   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁（React.lazy 延遲載入）
 │   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
 │   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
+│   ├── constants/categoryIcons.ts # 每個分類一個專屬 Lucide 圖示（禁止用 emoji 當圖示）
 │   ├── theme/tokens.ts       # 設計 Token（顏色唯一來源，Tailwind 與 Recharts 共用）
 │   ├── types/finance.ts       # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
 │   ├── utils/
@@ -109,6 +111,8 @@ account_web/
 - 舊版 GAS 會忽略 `v` 並回傳 `details`（`getDisplayValues()` 二維字串陣列），前端仍以 `normalizeGasDetails` 相容處理。兩條路徑都要保留，直到確認線上 GAS 已更新。
 - 「月度彙總」工作表不再由程式累加；前端月總額一律從明細計算（`calculateDynamicMonthlySummaries`）。
 - LINE 端：`ALLOWED_USER_IDS` 指令碼屬性為白名單（留空不限制）；「我的ID」查 userId、「撤銷」刪除上一批 LINE 寫入（會先比對內容）。寫入一律包在 `LockService` 內。
+- LINE 解析分兩層：`parseSimpleRecords` 先以規則處理「項目 金額」（分類靠 `CATEGORY_KEYWORDS`），只要有日期詞、運算或認不出分類就回傳 null 交給 Gemini。新增常用店家請加到 `CATEGORY_KEYWORDS`。
+- 線上只維護一個部署「Claude最新版」（`AKfycbyCVO01…`），LINE Webhook 與前端都連它；其他舊部署未封存但已不使用。
 - 修改 `gas/Code.gs` 後必須手動貼到 Apps Script 並「管理部署 → 編輯 → 新版本」，否則 Web App URL 仍跑舊程式。
 
 ---

@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  CircleAlert,
-  TrendingDown,
-  Zap
-} from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, CheckCircle2, CircleAlert, TrendingDown, Zap, AlertTriangle } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
 import { calculateSixMonthAverage, getPreviousMonth, sumMonthUpToDay } from '../utils/financeCalculations';
 import { palette } from '../theme/tokens';
@@ -187,7 +178,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               </span>
             ) : (
               <span className="text-amber-700 font-bold flex items-center gap-1 truncate">
-                <span className="text-xs">⚠️</span>
+                <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <span className="truncate">高於半年均線 NT$ {formatAmount(currentTotal - sixMonthAvg)}</span>
               </span>
             )}

@@ -118,3 +118,18 @@ export function compareTransactionDates(dateA: string, dateB: string, asc: boole
   // Tie breaker: string comparison
   return asc ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
 }
+
+/**
+ * "剛剛" / "5 分鐘前" / "3 小時前" / "2 天前" for a past ISO timestamp. Empty string if invalid.
+ */
+export function formatRelativeTime(iso: string | undefined, now: Date = new Date()): string {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const minutes = Math.floor((now.getTime() - then) / 60000);
+  if (minutes < 1) return '剛剛';
+  if (minutes < 60) return `${minutes} 分鐘前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小時前`;
+  return `${Math.floor(hours / 24)} 天前`;
+}

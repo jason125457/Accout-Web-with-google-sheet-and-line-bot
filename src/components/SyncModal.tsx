@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ShieldCheck, Link2, Key, CheckCircle2, AlertCircle, Loader2, RotateCcw } from 'lucide-react';
+import { X, ShieldCheck, Link2, Key, CheckCircle2, AlertCircle, Loader2, RotateCcw, Search } from 'lucide-react';
 import { GasConfig } from '../types/finance';
 import { fetchFromGas } from '../utils/gasApi';
 
@@ -199,7 +199,10 @@ export const SyncModal: React.FC<SyncModalProps> = ({
                   <span>測試連線中...</span>
                 </>
               ) : (
-                <span>🔍 測試連線</span>
+                <>
+                  <Search className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>測試連線</span>
+                </>
               )}
             </button>
             {config.lastSyncTime && (

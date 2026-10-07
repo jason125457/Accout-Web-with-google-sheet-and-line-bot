@@ -155,8 +155,8 @@ function doPost(e) {
       }
 
       try {
-        // 1. 呼叫 Gemini AI 解析記帳內容（可能多筆）
-        const records = callGemini(userText);
+        // 1. 簡單的「項目 金額」先用規則秒解析；有日期、運算或認不出分類才呼叫 Gemini
+        const records = parseSimpleRecords(userText) || callGemini(userText);
 
         // 2. 寫入 Google 試算表
         writeRecords(records, userId);
@@ -193,6 +193,62 @@ function formatReply(records) {
   const lines = records.map((r, i) => `${i + 1}. ${r.item} ${r.amount}（${r.category}）${describe(r).dateNote}`);
   const total = records.reduce((sum, r) => sum + r.amount, 0);
   return `✅ 記帳成功！共 ${records.length} 筆\n${lines.join('\n')}\n合計：${total}`;
+}
+
+// ==============================================================================
+// 2b. 規則快速解析（不經 Gemini）
+// ==============================================================================
+
+// 依序比對，先比對較具體的分類；同一個項目第一個命中的關鍵字決定分類。
+// 新增常用店家或品項時直接加在這裡（英文不分大小寫）。
+const CATEGORY_KEYWORDS = [
+  ['社交', ['聚餐', '請客', '送禮', '禮物', '紅包', '白包', '喜酒', '分帳', '慶生']],
+  ['娛樂', ['電影', '遊戲', '課金', 'netflix', 'spotify', 'youtube', 'disney', '訂閱', '旅遊', '門票',
+            'ktv', '演唱會', 'switch', 'steam', '展覽']],
+  ['家用', ['房租', '家具', '日用品', '衛生紙', '洗衣', '清潔', '修繕', '裝潢', '家電', '燈泡']],
+  ['雜支', ['看醫生', '醫生', '診所', '掛號', '藥', '捷運', '悠遊卡', '公車', '加油', '停車', '計程車',
+            'uber', '高鐵', '火車', '交通', '剪頭髮', '理髮']],
+  ['生活', ['早餐', '午餐', '晚餐', '宵夜', '早午餐', '便當', '火鍋', '飯', '麵', '粥', '餐', '吃',
+            '咖啡', '飲料', '奶茶', '茶', '豆漿', '全家', '7-11', '711', '萊爾富', '超商', '全聯',
+            '家樂福', '買菜', '菜', '水果', '麵包', '水費', '電費', '瓦斯', '電話費', '網路費']]
+];
+
+// 出現這些字代表需要語意理解（日期、分攤、計算），一律交給 Gemini
+const NEEDS_AI_PATTERN = /昨|前天|上週|上周|禮拜|星期|週[一二三四五六日]|\d+\s*[\/月]\s*\d+|號|每人|平分|AA|\d\s*[+＋*×xX]\s*\d|折|退/;
+
+function guessCategory(item) {
+  const lower = item.toLowerCase();
+  for (const [category, words] of CATEGORY_KEYWORDS) {
+    if (words.some(w => lower.includes(w))) return category;
+  }
+  return null;
+}
+
+/**
+ * 解析「午餐 120」「全家85」「午餐 120 飲料 50」這類訊息。
+ * 任何一段無法確定分類、或整句還有沒被吃掉的內容，就回傳 null 交給 Gemini。
+ */
+function parseSimpleRecords(text) {
+  const clean = String(text || '').trim();
+  if (!clean || NEEDS_AI_PATTERN.test(clean)) return null;
+
+  const segment = /([^\d\s,，、;；]+?)\s*(\d+(?:\.\d+)?)\s*(?:元|塊|圓)?/g;
+  const records = [];
+  let match;
+  while ((match = segment.exec(clean)) !== null) {
+    const item = match[1].replace(/(消費|花費|支出|購買)$/, '').trim();
+    const amount = Number(match[2]);
+    const category = guessCategory(item);
+    if (!item || !category || !(amount > 0 && amount < 1000000)) return null;
+    records.push({ date: Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd'), item, category, amount });
+  }
+
+  // 除了分隔符號外不能有剩下的字，避免漏掉資訊
+  const leftover = clean.replace(segment, '').replace(/[\s,，、;；]/g, '');
+  if (records.length === 0 || leftover) return null;
+
+  Logger.log(`⚡ 規則解析（未呼叫 Gemini）: ${JSON.stringify(records)}`);
+  return records;
 }
 
 // ==============================================================================
@@ -670,6 +726,13 @@ function testGeminiApi() {
       Logger.log(`❌ 測試「${input}」失敗: ${err.message}`);
     }
   }
+}
+
+function testSimpleParser() {
+  ['午餐 120', '全家85', '午餐 120 飲料 50', 'Netflix 390', '昨天晚餐 180', '買東西 500'].forEach(input => {
+    const res = parseSimpleRecords(input);
+    Logger.log(`「${input}」 ➜ ${res ? JSON.stringify(res) : '交給 Gemini'}`);
+  });
 }
 
 function testWriteToSheet() {

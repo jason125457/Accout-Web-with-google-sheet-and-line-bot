@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
-import { formatDate } from '../dateUtils';
+import { formatDate, formatRelativeTime } from '../dateUtils';
 import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
@@ -109,5 +109,19 @@ describe('budgets', () => {
     const r = resolveCategoryBudgets({ '生活': 9000 }, 10000);
     expect(r['生活']).toEqual({ amount: 9000, isCustom: true });
     expect(r['家用']).toEqual({ amount: 2500, isCustom: false });
+  });
+});
+
+describe('formatRelativeTime', () => {
+  const now = new Date('2026-10-07T12:00:00+08:00');
+  it.each([
+    ['2026-10-07T11:59:40+08:00', '剛剛'],
+    ['2026-10-07T11:55:00+08:00', '5 分鐘前'],
+    ['2026-10-07T09:00:00+08:00', '3 小時前'],
+    ['2026-10-05T12:00:00+08:00', '2 天前'],
+    [undefined, ''],
+    ['not a date', ''],
+  ])('%s -> %s', (iso, expected) => {
+    expect(formatRelativeTime(iso, now)).toBe(expected);
   });
 });

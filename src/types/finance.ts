@@ -29,7 +29,8 @@ export interface CategorySummary {
 export interface GasConfig {
   webAppUrl: string;
   secretToken: string;
-  lastSyncTime?: string;
+  lastSyncTime?: string;  // display string (zh-TW locale)
+  lastSyncAt?: string;    // ISO timestamp of the last successful sync
 }
 
 export type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';

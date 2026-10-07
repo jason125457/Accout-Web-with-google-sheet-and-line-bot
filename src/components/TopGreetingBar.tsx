@@ -1,5 +1,9 @@
-import React from 'react';
-import { Menu, Calendar, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Menu, Calendar, RefreshCw, Coffee, Sun, Moon } from 'lucide-react';
+import { DataSource } from '../types/finance';
+import { formatRelativeTime } from '../utils/dateUtils';
+
+const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 
 interface TopGreetingBarProps {
   selectedMonth: string;
@@ -9,6 +13,10 @@ interface TopGreetingBarProps {
   isSyncing: boolean;
   onRefresh: () => void;
   showMonthSelector?: boolean;
+  dataSource: DataSource;
+  lastSyncAt?: string;
+  lastSyncTime?: string;
+  syncError: string | null;
 }
 
 export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
@@ -19,11 +27,34 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
   isSyncing,
   onRefresh,
   showMonthSelector = true,
+  dataSource,
+  lastSyncAt,
+  lastSyncTime,
+  syncError,
 }) => {
+  // Re-render every minute so "x 分鐘前" stays current.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Determine greeting based on current hour
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? '早安' : currentHour < 18 ? '午安' : '晚安';
-  const emoji = currentHour < 12 ? '☕' : currentHour < 18 ? '☀️' : '🌙';
+  const GreetingIcon = currentHour < 12 ? Coffee : currentHour < 18 ? Sun : Moon;
+
+  const relative = formatRelativeTime(lastSyncAt, now) || lastSyncTime || '';
+  const isStale = !!lastSyncAt && now.getTime() - new Date(lastSyncAt).getTime() > STALE_AFTER_MS;
+  const syncStatus = isSyncing
+    ? { text: '正在同步最新資料…', tone: 'text-slate-500' }
+    : dataSource === 'demo'
+      ? { text: 'Demo 示範資料', tone: 'text-slate-500' }
+      : syncError && dataSource !== 'cloud'
+        ? { text: relative ? `同步失敗 · 顯示 ${relative}的資料` : '同步失敗', tone: 'text-rose-600' }
+        : relative
+          ? { text: `最後同步：${relative}${isStale ? ' · 可能不是最新' : ''}`, tone: isStale ? 'text-amber-700' : 'text-slate-500' }
+          : { text: '尚未同步', tone: 'text-slate-500' };
 
   const formatMonthLabel = (m: string) => {
     const [y, mo] = m.split('-');
@@ -46,11 +77,12 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight truncate">
-              {greeting}，理財達人 {emoji}
+              {greeting}，理財達人
             </h2>
+            <GreetingIcon className="w-5 h-5 text-gold shrink-0" aria-hidden="true" />
           </div>
-          <p className="hidden sm:block text-sm text-slate-500 mt-0.5 font-medium truncate">
-            今天是管理財務的好日子 · 清楚掌握收支節奏
+          <p className={`text-xs sm:text-sm mt-0.5 font-medium truncate ${syncStatus.tone}`} role="status">
+            {syncStatus.text}
           </p>
         </div>
       </div>

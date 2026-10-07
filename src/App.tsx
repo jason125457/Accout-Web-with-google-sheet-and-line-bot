@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
 import { MonthOverviewCard } from './components/MonthOverviewCard';
+import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
@@ -18,7 +19,7 @@ import {
   saveCachedData,
   getCachedData
 } from './utils/storage';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 const MonthlyBreakdownPage = lazy(() =>
   import('./components/MonthlyBreakdownPage').then(m => ({ default: m.MonthlyBreakdownPage }))
@@ -118,7 +119,7 @@ export const App: React.FC = () => {
     setBudgets(newBudgets);
     saveCachedData({ details, summary, budgets: newBudgets });
     const nowStr = new Date().toLocaleString('zh-TW');
-    const updatedConfig = { ...config, lastSyncTime: nowStr };
+    const updatedConfig = { ...config, lastSyncTime: nowStr, lastSyncAt: new Date().toISOString() };
     setGasConfig(updatedConfig);
     saveGasConfig(updatedConfig);
     return nowStr;
@@ -340,21 +341,21 @@ export const App: React.FC = () => {
             isSyncing={isSyncing}
             onRefresh={handleRefresh}
             showMonthSelector={activeTab === 'dashboard'}
+            dataSource={dataSource}
+            lastSyncAt={gasConfig.lastSyncAt}
+            lastSyncTime={gasConfig.lastSyncTime}
+            syncError={syncError}
           />
 
           {isLoading ? (
-            <div className="py-32 text-center space-y-3">
-              <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm font-semibold text-slate-700">正在讀取財務記帳資料...</p>
-              <p className="text-xs text-slate-400">正在連接與初始化資料結構</p>
-            </div>
+            <DashboardSkeleton />
           ) : activeTab === 'dashboard' ? (
             <>
               {/* Demo Mode Alert Banner */}
               {dataSource === 'demo' && (
                 <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-start sm:items-center space-x-2.5 text-violet-900">
-                    <span className="text-lg leading-none shrink-0">🎭</span>
+                    <Info className="w-4 h-4 mt-0.5 sm:mt-0 shrink-0" aria-hidden="true" />
                     <p>
                       <strong className="font-bold">Demo 示範模式：</strong>
                       目前顯示的是擬真範例資料。請在左側點擊「雲端連線設定」綁定您的 Google 試算表，即可查看最新記帳資料。

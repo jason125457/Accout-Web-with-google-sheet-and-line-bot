@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { ShoppingBag, Coffee, Car, Film, Sparkles, Quote } from 'lucide-react';
+import { Sparkles, Quote } from 'lucide-react';
 import { Transaction, MonthlySummary, TransactionCategory, CategoryBudgets } from '../types/finance';
 import { calculateSixMonthAverage, resolveCategoryBudgets } from '../utils/financeCalculations';
 import { STANDARD_CATEGORIES } from '../constants/categories';
+import { categoryIcon } from '../constants/categoryIcons';
 import { parseFlexibleDate } from '../utils/dateUtils';
 
 interface BudgetProgressPanelProps {
@@ -14,13 +15,13 @@ interface BudgetProgressPanelProps {
 
 const CATEGORY_META: Record<
   string,
-  { icon: React.FC<{ className?: string }>; color: string; barColor: string }
+  { color: string; barColor: string }
 > = {
-  '生活': { icon: ShoppingBag, color: 'text-teal-600 bg-teal-50', barColor: 'bg-teal-600' },
-  '家用': { icon: Coffee, color: 'text-blue-600 bg-blue-50', barColor: 'bg-blue-600' },
-  '社交': { icon: Coffee, color: 'text-pink-600 bg-pink-50', barColor: 'bg-pink-600' },
-  '娛樂': { icon: Film, color: 'text-amber-600 bg-amber-50', barColor: 'bg-amber-500' },
-  '雜支': { icon: Car, color: 'text-slate-600 bg-slate-100', barColor: 'bg-slate-500' },
+  '生活': { color: 'text-teal-600 bg-teal-50', barColor: 'bg-teal-600' },
+  '家用': { color: 'text-blue-600 bg-blue-50', barColor: 'bg-blue-600' },
+  '社交': { color: 'text-pink-600 bg-pink-50', barColor: 'bg-pink-600' },
+  '娛樂': { color: 'text-amber-600 bg-amber-50', barColor: 'bg-amber-500' },
+  '雜支': { color: 'text-slate-600 bg-slate-100', barColor: 'bg-slate-500' },
 };
 
 export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
@@ -110,7 +111,7 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
           {STANDARD_CATEGORIES.map((cat) => {
             const spent = categoryTotals[cat];
             const meta = CATEGORY_META[cat] || CATEGORY_META['生活'];
-            const Icon = meta.icon;
+            const Icon = categoryIcon(cat);
             const { amount: budget, isCustom } = categoryBudgets[cat];
             const rawPct = Math.round((spent / budget) * 100);
             const barPct = Math.min(rawPct, 100);
