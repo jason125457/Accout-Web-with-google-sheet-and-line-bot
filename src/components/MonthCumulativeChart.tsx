@@ -9,8 +9,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   TooltipProps,
+  ReferenceLine,
+  ReferenceDot,
 } from 'recharts';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Transaction, MonthlySummary, CategoryBudgets } from '../types/finance';
 import {
   buildCumulativeSeries,
@@ -31,7 +33,11 @@ const SERIES = {
   cumulative: { label: '本月累計', color: palette.primary },
   lastMonth: { label: '上月同期', color: palette.compare },
   pace: { label: '預算進度', color: palette.goldDeep },
+  projection: { label: '月底推估', color: palette.primary },
 } as const;
+
+// Above the budget pace by more than this share of it counts as serious, not just a warning.
+const SERIOUS_OVER_PACE = 0.2;
 
 const fmt = (n: number) => `NT$ ${Math.round(n).toLocaleString()}`;
 const fmtAxis = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
@@ -49,6 +55,7 @@ const ChartTooltip: React.FC<TooltipProps<number, string> & { month: string }> =
     [SERIES.cumulative.label, SERIES.cumulative.color, p.cumulative],
     [SERIES.lastMonth.label, SERIES.lastMonth.color, p.lastMonth],
     [SERIES.pace.label, SERIES.pace.color, p.pace],
+    [SERIES.projection.label, SERIES.projection.color, p.cumulative === null ? p.projection : null],
   ];
   return (
     <div className="bg-surface border border-line rounded-xl shadow-lg px-3 py-2.5 text-xs space-y-1.5 min-w-[160px]">
@@ -100,11 +107,17 @@ export const MonthCumulativeChart: React.FC<MonthCumulativeChartProps> = ({
   // Headline compares where we are now with the same day last month and with the budget pace.
   const vsLastMonth = latest && latest.lastMonth ? latest.cumulative! - latest.lastMonth : null;
   const vsPace = latest ? latest.cumulative! - latest.pace : 0;
+  const paceStatus = vsPace <= 0
+    ? { text: `低於預算進度 ${fmt(-vsPace)}`, Icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-700 border-emerald-200/60' }
+    : latest && latest.pace > 0 && vsPace / latest.pace > SERIOUS_OVER_PACE
+      ? { text: `超前預算進度 ${fmt(vsPace)}`, Icon: AlertTriangle, tone: 'bg-rose-50 text-rose-700 border-rose-200/60' }
+      : { text: `超前預算進度 ${fmt(vsPace)}`, Icon: AlertTriangle, tone: 'bg-amber-50 text-amber-800 border-amber-200/60' };
+  const projectionEnd = series[series.length - 1].projection;
   const lastDayLabel = latest ? `${parseInt(selectedMonth.slice(5), 10)}/${latest.day}` : '';
   const ticks = [1, 5, 10, 15, 20, 25, series.length];
 
   const summary = latest
-    ? `${monthLabel}截至 ${lastDayLabel} 累計 ${fmt(latest.cumulative!)}，上月同期 ${latest.lastMonth !== null ? fmt(latest.lastMonth) : '無資料'}，預算進度 ${fmt(latest.pace)}。`
+    ? `${monthLabel}截至 ${lastDayLabel} 累計 ${fmt(latest.cumulative!)}，上月同期 ${latest.lastMonth !== null ? fmt(latest.lastMonth) : '無資料'}，預算進度 ${fmt(latest.pace)}${projectionEnd !== null ? `，依目前速度月底約 ${fmt(projectionEnd)}` : ''}。`
     : '';
 
   return (
@@ -129,12 +142,9 @@ export const MonthCumulativeChart: React.FC<MonthCumulativeChartProps> = ({
                 比上月同期{vsLastMonth > 0 ? '多' : '少'} {fmt(Math.abs(vsLastMonth))}
               </span>
             )}
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border ${
-                vsPace > 0 ? 'bg-amber-50 text-amber-800 border-amber-200/60' : 'bg-slate-50 text-ink-muted border-line'
-              }`}
-            >
-              {vsPace > 0 ? `超前預算進度 ${fmt(vsPace)}` : `低於預算進度 ${fmt(-vsPace)}`}
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border ${paceStatus.tone}`}>
+              <paceStatus.Icon className="w-3 h-3" aria-hidden="true" />
+              {paceStatus.text}
             </span>
           </div>
         )}
@@ -204,6 +214,46 @@ export const MonthCumulativeChart: React.FC<MonthCumulativeChartProps> = ({
                   connectNulls={false}
                   isAnimationActive={false}
                 />
+                {projectionEnd !== null && (
+                  <Line
+                    type="linear"
+                    dataKey="projection"
+                    stroke={SERIES.projection.color}
+                    strokeOpacity={0.55}
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                )}
+                {isCurrent && latest && (
+                  <ReferenceLine
+                    x={latest.day}
+                    stroke={palette.inkSubtle}
+                    strokeOpacity={0.6}
+                    strokeDasharray="2 3"
+                    label={{ value: '今天', position: 'insideTopLeft', fill: palette.inkMuted, fontSize: 10 }}
+                  />
+                )}
+                {latest && (
+                  <ReferenceDot
+                    x={latest.day}
+                    y={latest.cumulative!}
+                    r={5}
+                    fill={SERIES.cumulative.color}
+                    stroke={palette.surface}
+                    strokeWidth={2}
+                    label={{
+                      value: fmt(latest.cumulative!),
+                      position: latest.day > series.length * 0.8 ? 'left' : 'top',
+                      fill: palette.ink,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -221,6 +271,12 @@ export const MonthCumulativeChart: React.FC<MonthCumulativeChartProps> = ({
               <LegendSwatch color={SERIES.pace.color} dash="2 3" />
               {SERIES.pace.label}（{budget.isCustom ? '預算' : '參考預算'} {fmt(budget.amount)}）
             </span>
+            {projectionEnd !== null && (
+              <span className="flex items-center gap-1.5">
+                <LegendSwatch color={SERIES.projection.color} dash="3 3" />
+                {SERIES.projection.label} {fmt(projectionEnd)}
+              </span>
+            )}
           </div>
         </>
       )}

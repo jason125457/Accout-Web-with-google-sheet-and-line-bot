@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, CheckCircle2, CircleAlert, TrendingDown, Zap, AlertTriangle } from 'lucide-react';
 import { MonthlySummary, Transaction } from '../types/finance';
-import { calculateSixMonthAverage, getPreviousMonth, sumMonthUpToDay } from '../utils/financeCalculations';
+import { calculateSixMonthAverage, getPreviousMonth, sumMonthUpToDay, projectMonthEnd } from '../utils/financeCalculations';
 import { palette } from '../theme/tokens';
 
 interface MetricCardsProps {
@@ -60,11 +60,8 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   );
 
   const elapsedDays = isCurrentActiveMonth ? today.getDate() : daysInActiveMonth;
-  const dailyBurn = Math.round(currentTotal / Math.max(elapsedDays, 1));
-
-  const projectedTotal = isCurrentActiveMonth
-    ? Math.round(dailyBurn * daysInActiveMonth)
-    : currentTotal;
+  const { dailyAvg: dailyBurn, projected } = projectMonthEnd(currentTotal, elapsedDays, daysInActiveMonth);
+  const projectedTotal = isCurrentActiveMonth ? projected : currentTotal;
 
   const paceRatio = sixMonthAvg > 0 ? projectedTotal / sixMonthAvg : 0;
   const paceStatus = paceRatio > 1.1

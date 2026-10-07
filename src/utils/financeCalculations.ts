@@ -142,12 +142,25 @@ export function totalMonthlyBudget(
   };
 }
 
+/** Minimum elapsed days before a month-end projection is shown; earlier it is mostly noise. */
+export const MIN_DAYS_FOR_PROJECTION = 5;
+
+/**
+ * Month-end estimate at the current daily average. Shared by the 月底推估 card and the
+ * cumulative chart so both always show the same number.
+ */
+export function projectMonthEnd(total: number, elapsedDays: number, daysInMonth: number) {
+  const dailyAvg = Math.round(total / Math.max(elapsedDays, 1));
+  return { dailyAvg, projected: Math.round(dailyAvg * daysInMonth) };
+}
+
 export interface CumulativePoint {
   day: number;
   daily: number | null;      // spending on that day (null = day not reached yet)
   cumulative: number | null; // running total for the month (null = day not reached yet)
-  lastMonth: number | null;  // previous month's running total on the same day (null if that day didn't exist)
+  lastMonth: number;         // previous month's running total; held at its month total past its last day
   pace: number;              // even-spend budget line
+  projection: number | null; // today -> month end at the current daily average (current month only)
 }
 
 /**
@@ -179,6 +192,10 @@ export function buildCumulativeSeries(
     else if (t.month === prevMonth && day <= daysInPrev) dailyPrev[day] += t.amount;
   });
 
+  const totalSoFar = dailyThis.slice(1, lastDay + 1).reduce((a: number, b: number) => a + b, 0);
+  const showProjection = isCurrent && lastDay >= MIN_DAYS_FOR_PROJECTION && lastDay < daysInMonth;
+  const { projected } = projectMonthEnd(totalSoFar, lastDay, daysInMonth);
+
   const points: CumulativePoint[] = [];
   let runThis = 0;
   let runPrev = 0;
@@ -190,8 +207,12 @@ export function buildCumulativeSeries(
       day,
       daily: reached ? dailyThis[day] : null,
       cumulative: reached ? runThis : null,
-      lastMonth: day <= daysInPrev ? runPrev : null,
+      lastMonth: runPrev,
       pace: Math.round((totalBudget * day) / daysInMonth),
+      // Straight line from today's actual total to the shared month-end estimate.
+      projection: showProjection && day >= lastDay
+        ? Math.round(totalSoFar + ((projected - totalSoFar) * (day - lastDay)) / (daysInMonth - lastDay))
+        : null,
     });
   }
   return points;

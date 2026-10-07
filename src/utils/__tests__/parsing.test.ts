@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
 import { formatDate, formatRelativeTime } from '../dateUtils';
-import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries } from '../financeCalculations';
+import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
 
@@ -135,10 +135,19 @@ describe('buildCumulativeSeries', () => {
   it('stops the current month at today and compares with last month', () => {
     const s = buildCumulativeSeries(list, '2026-10', 3100, new Date(2026, 9, 3, 20));
     expect(s).toHaveLength(31);
-    expect(s[0]).toEqual({ day: 1, daily: 100, cumulative: 100, lastMonth: 0, pace: 100 });
+    expect(s[0]).toEqual({ day: 1, daily: 100, cumulative: 100, lastMonth: 0, pace: 100, projection: null });
     expect(s[2]).toMatchObject({ day: 3, cumulative: 150, lastMonth: 70 });
     expect(s[3]).toMatchObject({ day: 4, daily: null, cumulative: null });
-    expect(s[30]).toMatchObject({ day: 31, lastMonth: null, pace: 3100 }); // September has no 31st
+    expect(s[30]).toMatchObject({ day: 31, lastMonth: 80, pace: 3100 }); // September has no 31st: hold its total
+    expect(s.every(p => p.projection === null)).toBe(true); // only 3 days in: too early to project
+  });
+
+  it('projects from today to the same month-end figure the 月底推估 card shows', () => {
+    const s = buildCumulativeSeries(list, '2026-10', 3100, new Date(2026, 9, 10, 20));
+    const { projected } = projectMonthEnd(150, 10, 31);
+    expect(s[8].projection).toBeNull();
+    expect(s[9].projection).toBe(150);          // starts at today's actual total
+    expect(s[30].projection).toBe(projected);   // ends at the shared estimate
   });
 
   it('fills every day for a past month', () => {
