@@ -128,3 +128,71 @@ export function resolveCategoryBudgets(
     })
   ) as Record<TransactionCategory, ResolvedBudget>;
 }
+
+/** Sum of all category budgets for a month (custom where set, reference estimate otherwise). */
+export function totalMonthlyBudget(
+  custom: CategoryBudgets,
+  summaries: MonthlySummary[],
+  month: string
+): { amount: number; isCustom: boolean } {
+  const resolved = resolveCategoryBudgets(custom, calculateSixMonthAverage(summaries, month));
+  return {
+    amount: STANDARD_CATEGORIES.reduce((sum, cat) => sum + resolved[cat].amount, 0),
+    isCustom: STANDARD_CATEGORIES.some(cat => resolved[cat].isCustom),
+  };
+}
+
+export interface CumulativePoint {
+  day: number;
+  daily: number | null;      // spending on that day (null = day not reached yet)
+  cumulative: number | null; // running total for the month (null = day not reached yet)
+  lastMonth: number | null;  // previous month's running total on the same day (null if that day didn't exist)
+  pace: number;              // even-spend budget line
+}
+
+/**
+ * Day-by-day running totals for `month`, compared with the previous month and an even budget pace.
+ * For the month in progress, days after `today` are null so the line stops instead of dropping to 0.
+ */
+export function buildCumulativeSeries(
+  transactions: Transaction[],
+  month: string,
+  totalBudget: number,
+  today: Date = new Date()
+): CumulativePoint[] {
+  const [year, mon] = month.split('-').map(Number);
+  if (!year || !mon) return [];
+  const daysInMonth = new Date(year, mon, 0).getDate();
+  const prevMonth = getPreviousMonth(month);
+  const [py, pm] = prevMonth.split('-').map(Number);
+  const daysInPrev = new Date(py, pm, 0).getDate();
+
+  const isCurrent = month === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const lastDay = isCurrent ? today.getDate() : daysInMonth;
+
+  const dailyThis = new Array(daysInMonth + 1).fill(0);
+  const dailyPrev = new Array(daysInPrev + 1).fill(0);
+  transactions.forEach(t => {
+    const day = parseInt(t.date.slice(8, 10), 10);
+    if (isNaN(day)) return;
+    if (t.month === month && day <= daysInMonth) dailyThis[day] += t.amount;
+    else if (t.month === prevMonth && day <= daysInPrev) dailyPrev[day] += t.amount;
+  });
+
+  const points: CumulativePoint[] = [];
+  let runThis = 0;
+  let runPrev = 0;
+  for (let day = 1; day <= daysInMonth; day++) {
+    runThis += dailyThis[day];
+    if (day <= daysInPrev) runPrev += dailyPrev[day];
+    const reached = day <= lastDay;
+    points.push({
+      day,
+      daily: reached ? dailyThis[day] : null,
+      cumulative: reached ? runThis : null,
+      lastMonth: day <= daysInPrev ? runPrev : null,
+      pace: Math.round((totalBudget * day) / daysInMonth),
+    });
+  }
+  return points;
+}

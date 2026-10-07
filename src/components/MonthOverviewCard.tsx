@@ -1,12 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Transaction, MonthlySummary, CategoryBudgets } from '../types/finance';
-import { STANDARD_CATEGORIES } from '../constants/categories';
-import {
-  calculateSixMonthAverage,
-  getCurrentMonthString,
-  resolveCategoryBudgets,
-} from '../utils/financeCalculations';
+import { getCurrentMonthString, totalMonthlyBudget } from '../utils/financeCalculations';
 import { compareTransactionDates } from '../utils/dateUtils';
 import { categoryColor } from '../theme/tokens';
 
@@ -38,13 +33,10 @@ export const MonthOverviewCard: React.FC<MonthOverviewCardProps> = ({
 
   const spent = monthTxns.reduce((sum, t) => sum + t.amount, 0);
 
-  const { totalBudget, isCustom } = useMemo(() => {
-    const resolved = resolveCategoryBudgets(budgets, calculateSixMonthAverage(monthlySummaries, selectedMonth));
-    return {
-      totalBudget: STANDARD_CATEGORIES.reduce((sum, cat) => sum + resolved[cat].amount, 0),
-      isCustom: STANDARD_CATEGORIES.some(cat => resolved[cat].isCustom),
-    };
-  }, [budgets, monthlySummaries, selectedMonth]);
+  const { amount: totalBudget, isCustom } = useMemo(
+    () => totalMonthlyBudget(budgets, monthlySummaries, selectedMonth),
+    [budgets, monthlySummaries, selectedMonth]
+  );
 
   const remaining = totalBudget - spent;
   const isOver = remaining < 0;

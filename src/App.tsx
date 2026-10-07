@@ -4,6 +4,7 @@ import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
 import { MonthOverviewCard } from './components/MonthOverviewCard';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
+import { MonthCumulativeChart } from './components/MonthCumulativeChart';
 import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
@@ -427,6 +428,14 @@ export const App: React.FC = () => {
                 selectedCategory={filters.selectedCategory}
                 onCategoryClick={handleCategoryDrillDown}
                 onMonthClick={handleMonthDrillDown}
+              />
+
+              {/* 本月每日累計支出走勢（對照上月同期與預算進度） */}
+              <MonthCumulativeChart
+                transactions={transactions}
+                monthlySummaries={dynamicMonthlySummaries}
+                selectedMonth={filters.selectedMonth}
+                budgets={budgets}
               />
 
               {/* Row 3: 下層雙分欄佈局 (近期交易 7 欄 : 預算進度與生活洞察 5 欄) */}

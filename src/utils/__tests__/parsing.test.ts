@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
 import { formatDate, formatRelativeTime } from '../dateUtils';
-import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets } from '../financeCalculations';
+import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
 
@@ -123,5 +123,26 @@ describe('formatRelativeTime', () => {
     ['not a date', ''],
   ])('%s -> %s', (iso, expected) => {
     expect(formatRelativeTime(iso, now)).toBe(expected);
+  });
+});
+
+describe('buildCumulativeSeries', () => {
+  const tx = (date: string, amount: number): Transaction => ({
+    id: date + amount, date, item: 'x', category: '生活', amount, month: date.slice(0, 7),
+  });
+  const list = [tx('2026-10-01 12:00:00', 100), tx('2026-10-03 09:00:00', 50), tx('2026-09-02', 70), tx('2026-09-30', 10)];
+
+  it('stops the current month at today and compares with last month', () => {
+    const s = buildCumulativeSeries(list, '2026-10', 3100, new Date(2026, 9, 3, 20));
+    expect(s).toHaveLength(31);
+    expect(s[0]).toEqual({ day: 1, daily: 100, cumulative: 100, lastMonth: 0, pace: 100 });
+    expect(s[2]).toMatchObject({ day: 3, cumulative: 150, lastMonth: 70 });
+    expect(s[3]).toMatchObject({ day: 4, daily: null, cumulative: null });
+    expect(s[30]).toMatchObject({ day: 31, lastMonth: null, pace: 3100 }); // September has no 31st
+  });
+
+  it('fills every day for a past month', () => {
+    const s = buildCumulativeSeries(list, '2026-09', 0, new Date(2026, 9, 3));
+    expect(s[29]).toMatchObject({ day: 30, cumulative: 80 });
   });
 });

@@ -54,6 +54,7 @@ account_web/
 │   │   ├── DashboardSkeleton.tsx # 首次載入（無快取）時的骨架畫面
 │   │   ├── MetricCards.tsx    # 4 大 KPI（當月支出 vs 上月同期、半年均線、最高單筆、月底推估）
 │   │   ├── ExpenseCharts.tsx  # 柱狀/走勢雙視圖 + 類別甜甜圈圖 (支援 Drill-down 連動篩選)
+│   │   ├── MonthCumulativeChart.tsx # 當月每日累計支出 vs 上月同期 vs 預算進度（單一 Y 軸，進行中月份止於今天）
 │   │   ├── BudgetProgressPanel.tsx # 類別支出進度 + 週末/平日洞察
 │   │   ├── TransactionList.tsx# 交易明細列表 (分頁、類別 Tag、搜尋、排序、大額徽章)
 │   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁（React.lazy 延遲載入）

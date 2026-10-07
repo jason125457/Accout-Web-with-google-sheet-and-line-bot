@@ -30,6 +30,7 @@ export const palette = {
   goldDeep: '#B87C1E',
   warning: '#F59E0B',     // averages / large amounts (amber-500)
   danger: '#E11D48',      // over budget (rose-600)
+  compare: '#6366F1',     // comparison series, e.g. last month (indigo-500)
 
   // Dark sidebar
   night: '#111A18',
