@@ -40,6 +40,5 @@ export interface FilterState {
   selectedCategory: string;           // 'all' 或 '生活'
   searchQuery: string;                // 關鍵字搜尋
   onlyBigExpenses: boolean;           // 只看大額 (>= 1,000)
-  excludeLargeThreshold: number | null; // 排除非常規大額 (null=不排除, 5000=排除>=5000)
   sortBy: SortOption;                 // 排序
 }

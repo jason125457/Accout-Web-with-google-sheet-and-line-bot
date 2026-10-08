@@ -133,3 +133,17 @@ export function formatRelativeTime(iso: string | undefined, now: Date = new Date
   if (hours < 24) return `${hours} 小時前`;
   return `${Math.floor(hours / 24)} 天前`;
 }
+
+/**
+ * Compact list label: "10/07 12:00", or "10/07" when there is no time.
+ * Falls back to the raw string when it cannot be parsed.
+ */
+export function formatShortDateTime(raw: string): string {
+  const d = parseFlexibleDate(raw);
+  if (!d) return raw;
+  const md = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  const hasTime = /\d:\d/.test(raw) && (d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0);
+  return hasTime
+    ? `${md} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    : md;
+}

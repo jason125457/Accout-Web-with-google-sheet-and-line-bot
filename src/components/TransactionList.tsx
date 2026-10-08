@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Search, ArrowUpDown, Flame, CalendarDays } f
 import { Transaction } from '../types/finance';
 import { STANDARD_CATEGORIES } from '../constants/categories';
 import { categoryIcon } from '../constants/categoryIcons';
+import { formatShortDateTime } from '../utils/dateUtils';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -218,7 +219,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
-                      <span>{t.date}</span>
+                      <time dateTime={t.date}>{formatShortDateTime(t.date)}</time>
                     </div>
                   </div>
                 </div>

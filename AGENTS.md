@@ -12,15 +12,15 @@
 ```mermaid
 flowchart LR
     User["👤 使用者 (LINE)"] -->|"自然語言 (如: 午餐 120)"| LineBot["💬 LINE 官方帳號"]
-    LineBot -->|"Webhook POST"| GAS_POST["⚙️ GAS doPost<br/>(Gemini 2.5/3.1 備援鏈)"]
-    GAS_POST -->|"自動分類寫入"| Sheet[("📊 Google Sheets<br/>記帳明細 / 月度彙總")]
+    LineBot -->|"Webhook POST"| GAS_POST["⚙️ GAS doPost<br/>(規則快速解析 → Gemini 3.5/3.1/2.5 備援鏈)"]
+    GAS_POST -->|"自動分類寫入"| Sheet[("📊 Google Sheets<br/>記帳明細 / 預算設定")]
 
     subgraph "前端儀表板 (本專案本體)"
         Web["💻 React 18 + TS + Tailwind<br/>(Cloudflare Pages 託管)"]
-        Web -->|"HTTP GET ?token=API_SECRET_TOKEN"| GAS_GET["⚙️ GAS doGet<br/>(getDisplayValues)"]
+        Web -->|"HTTP GET ?v=2&token=API_SECRET_TOKEN"| GAS_GET["⚙️ GAS doGet v2<br/>(正規化 records + budgets)"]
         GAS_GET -->|"讀取帳目"| Sheet
         GAS_GET -->|"JSON 回傳"| Web
-        Web -->|"快取保存"| LocalStorage[("💾 LocalStorage (v3)")]
+        Web -->|"快取保存"| LocalStorage[("💾 LocalStorage 快取<br/>(CACHE_VERSION 見 storage.ts)")]
     end
 ```
 
@@ -61,6 +61,7 @@ account_web/
 │   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
 │   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
 │   ├── constants/categoryIcons.ts # 每個分類一個專屬 Lucide 圖示（禁止用 emoji 當圖示）
+│   ├── hooks/useNow.ts        # 每分鐘更新的現在時間（相對時間顯示用）
 │   ├── theme/tokens.ts       # 設計 Token（顏色唯一來源，Tailwind 與 Recharts 共用）
 │   ├── types/finance.ts       # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
 │   ├── utils/

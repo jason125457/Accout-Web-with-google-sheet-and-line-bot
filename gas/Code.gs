@@ -213,11 +213,20 @@ const CATEGORY_KEYWORDS = [
             '家樂福', '買菜', '菜', '水果', '麵包', '水費', '電費', '瓦斯', '電話費', '網路費']]
 ];
 
+// 先比對的完整詞，用來蓋過單字關鍵字的誤判（例如「茶几」不是飲料、「藥燉排骨」不是看醫生）
+const PRIORITY_PHRASES = [
+  ['茶几', '家用'], ['茶壺', '家用'], ['茶杯', '家用'],
+  ['藥燉', '生活'], ['藥膳', '生活'], ['麵包機', '家用'], ['飯鍋', '家用'], ['電鍋', '家用'],
+  ['車票', '雜支'], ['餐具', '家用']
+];
+
 // 出現這些字代表需要語意理解（日期、分攤、計算），一律交給 Gemini
 const NEEDS_AI_PATTERN = /昨|前天|上週|上周|禮拜|星期|週[一二三四五六日]|\d+\s*[\/月]\s*\d+|號|每人|平分|AA|\d\s*[+＋*×xX]\s*\d|折|退/;
 
 function guessCategory(item) {
   const lower = item.toLowerCase();
+  const phrase = PRIORITY_PHRASES.find(([p]) => lower.includes(p));
+  if (phrase) return phrase[1];
   for (const [category, words] of CATEGORY_KEYWORDS) {
     if (words.some(w => lower.includes(w))) return category;
   }

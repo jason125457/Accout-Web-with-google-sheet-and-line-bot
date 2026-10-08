@@ -52,7 +52,6 @@ export const App: React.FC = () => {
     selectedCategory: 'all',
     searchQuery: '',
     onlyBigExpenses: false,
-    excludeLargeThreshold: null,
     sortBy: 'date-desc'
   });
 
@@ -325,6 +324,7 @@ export const App: React.FC = () => {
         onRefresh={handleRefresh}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         lastSyncTime={gasConfig.lastSyncTime}
+        lastSyncAt={gasConfig.lastSyncAt}
         syncError={syncError}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}

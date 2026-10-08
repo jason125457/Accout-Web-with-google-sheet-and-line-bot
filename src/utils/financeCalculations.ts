@@ -32,10 +32,9 @@ export function sumMonthUpToDay(transactions: Transaction[], month: string, day:
 }
 
 /**
- * Dynamically aggregates transactions into MonthlySummary[] format.
- * This ensures that when filters (like "日常模式" excluding >= $5k) are applied,
- * or when manual records are added, the monthly summaries for charts and metrics
- * dynamically and immediately reflect the exact filtered sums.
+ * Aggregates transactions into MonthlySummary[] so monthly totals always come from the
+ * detail rows (the 「月度彙總」 sheet is no longer maintained by the backend).
+ * Months that exist only in baseSummaries are kept with a zero total.
  */
 export function calculateDynamicMonthlySummaries(
   transactions: Transaction[],

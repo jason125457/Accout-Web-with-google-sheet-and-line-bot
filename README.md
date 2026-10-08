@@ -14,29 +14,18 @@
 
 ## ✨ 核心特色
 
-- 🏛️ **Revolut & Stripe 頂級金融美學**：極簡白底搭配翡翠綠（Teal）與冷靛藍（Indigo）重音，高呼吸感、1px 髮絲邊框與 Authoritative 數據層次。
-- 🎭 **內建 Demo 示範模式**：初次進入或分享給朋友時，預設顯示完整的擬真消費資料，保護隱私不外洩真實帳目。
-- ☁️ **Google 試算表安全同步連線**：
-  - 透過 Google Apps Script `doGet` API 讀取 LINE Bot 記帳明細與月度彙總。
-  - 金鑰與 Web App URL 僅儲存於使用者本地瀏覽器（`localStorage`），連線時只傳送到使用者指定的 GAS。
-  - 清楚區分「已同步、快取資料、同步失敗、Demo」四種資料狀態，避免把舊快取誤認為最新資料。
-- 📊 **月度支出走勢（雙視圖自由切換）**：
-  - **柱狀分佈 (Bar，預設)**：頂部圓角柱體，將「當月進行中」以專屬樣式獨立呈現，避免折線圖產生斷崖失真感。
-  - **平滑趨勢 (Area)**：張力校正的自然平滑曲線與微光漸層。
-- 🍩 **消費類別分佈甜甜圈圖**：
-  - 懸浮 Glassmorphism 數據卡片。
-  - **圖表 Drill-down 連動**：點擊扇區或類別標籤，下方明細立即無縫篩選該分類！
-- 📅 **專屬「每月花費分析」分頁**：
-  - 全年月份各類別堆疊柱狀圖（Stacked Bar Chart），一眼洞察消費結構跨月變化。
-  - 月份摘要卡片 Grid（各月總額 + 前三大開銷類別小進度條）。
-- ⏱️ **本月消費進度感知 (Burn Rate)**：
-  - 顯示當月已過天數百分比、日均開銷速度（NT$/天）與月底推估結算額。
-  - 選擇歷史月份時自動切換為「實際結算／實際日均」，不再顯示錯誤推估。
-  - 自動對比該月份之前的近半年平均生活水準，超標時以橘/紅提醒。
-- 💡 **生活消費純演算洞察**：
-  - 不耗費 AI API，前端純演算法自動推算「週末 vs 平日開銷比」、「最花錢的一天」與「類別月增減變化」。
-- 🧭 **一致的月份分析範圍**：總支出、最高單筆、分類、交易明細與參考水位使用同一個明確月份；趨勢圖範圍獨立切換。
-- 📱 **手機版 RWD 適配**：2×2 精簡 KPI、吸頂導覽、較大的觸控區，以及月份明細就地展開。
+- 💬 **用 LINE 自然語言記帳**：傳「午餐 120」「午餐 120 飲料 50」「昨天晚餐 180」即可寫入 Google 試算表。
+  - 簡單的「項目 金額」由規則直接解析、秒回；含日期、分攤、運算或新品項時才交給 Gemini（3.5 / 3.1 Flash-Lite → 2.5 Flash 備援鏈）。
+  - 「撤銷」刪除上一筆（先比對內容才刪）、「我的ID」查詢 userId 以設定白名單。
+- ☁️ **Google 試算表同步**：前端以 `doGet?v=2` 讀取已正規化的資料（台北時區日期、數字金額）；開啟時先顯示快取、背景再同步，並顯示「最後同步：幾分鐘前」。
+- 🎯 **自訂預算**：在試算表「預算設定」分頁填各類別每月預算即生效；未設定的類別以近半年平均推估「參考」值。
+- 📈 **本月累計支出走勢**：每日累計 vs 上月同期 vs 預算進度，標示今天位置，並從第 5 天起延伸月底推估線。
+- 📊 **月度支出趨勢**：柱狀（預設）／走勢雙視圖，進行中月份特別標示；點擊月份或類別即可連動篩選明細。
+- 🧮 **4 大指標卡**：本月支出（對比上月同期）、半年均線、最高單筆、月底推估。
+- 📱 **手機首屏「本月概況」**：本月已花、預算剩餘、每天可花多少、最近 5 筆。
+- 📅 **每月花費分析分頁**：各類別堆疊柱狀圖與月份摘要卡片。
+- 🎭 **Demo 示範模式**：未連線時顯示擬真範例資料，保護隱私。
+- 🎨 **設計 Token**：顏色集中於 `src/theme/tokens.ts`，Tailwind 與圖表共用（暖米白底、青綠主色、深色側欄 + 金色強調）。
 
 ---
 
@@ -44,35 +33,44 @@
 
 ```text
 account_web/
+├── gas/Code.gs                 # Google Apps Script 後端（LINE doPost + 儀表板 doGet）
 ├── public/
-│   ├── manifest.json          # PWA 設定
-│   └── sw.js                  # Network-first Service Worker
+│   ├── manifest.json           # PWA 設定
+│   └── sw.js                   # Network-first Service Worker
 ├── src/
 │   ├── components/
-│   │   ├── Sidebar.tsx        # 桌機側欄與手機抽屜導覽
-│   │   ├── TopGreetingBar.tsx # 吸頂工具列與分析月份選擇
-│   │   ├── MetricCards.tsx    # 4 大金融核心指標卡
-│   │   ├── ExpenseCharts.tsx  # 柱狀/走勢圖 + 類別分佈甜甜圈圖 (可 Drill-down)
-│   │   ├── TransactionList.tsx# 記帳明細列表與分頁
-│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁面 (堆疊柱狀圖)
-│   │   ├── SyncModal.tsx      # Google Apps Script 連線設定彈窗
-│   │   └── BudgetProgressPanel.tsx # 類別參考水位與生活洞察
-│   ├── types/
-│   │   └── finance.ts         # TypeScript 核心資料介面定義
-│   ├── utils/
-│   │   ├── gasApi.ts          # Google Apps Script 雲端同步與時區正規化
-│   │   ├── demoData.ts        # 內建 50+ 筆 Demo 示範記帳假資料
-│   │   └── storage.ts         # LocalStorage 本地持久化與版本自動遷移
-│   ├── App.tsx                # 主程式入口與狀態管理
-│   ├── main.tsx               # React DOM 渲染
-│   └── index.css              # Tailwind CSS 與自訂微光陰影
-├── .gitignore                 # 排除 node_modules、dist 與私密試算表
-├── index.html                 # HTML 骨架
-├── package.json               # 專案依賴與腳本
-├── tailwind.config.js         # Tailwind 樣式設定
-├── tsconfig.json              # TypeScript 編譯設定
-└── vite.config.ts             # Vite 打包配置
+│   │   ├── Sidebar.tsx         # 桌機側欄與手機抽屜導覽、同步狀態
+│   │   ├── TopGreetingBar.tsx  # 問候語、同步狀態、分析月份選擇
+│   │   ├── MonthOverviewCard.tsx  # 手機首屏本月概況
+│   │   ├── MetricCards.tsx     # 4 大指標卡
+│   │   ├── ExpenseCharts.tsx   # 月度趨勢 + 類別甜甜圈圖（可 Drill-down）
+│   │   ├── MonthCumulativeChart.tsx # 本月累計支出走勢
+│   │   ├── BudgetProgressPanel.tsx  # 類別預算進度與週末/平日洞察
+│   │   ├── TransactionList.tsx # 交易明細（搜尋、排序、分頁）
+│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析頁（延遲載入）
+│   │   ├── DashboardSkeleton.tsx    # 首次載入骨架畫面
+│   │   └── SyncModal.tsx       # Google Apps Script 連線設定
+│   ├── constants/              # 五大分類、分類圖示
+│   ├── hooks/useNow.ts         # 每分鐘更新的現在時間（相對時間顯示用）
+│   ├── theme/tokens.ts         # 顏色 Token（唯一來源）
+│   ├── types/finance.ts        # TypeScript 資料介面
+│   ├── utils/                  # GAS 連線與正規化、日期、財務計算、LocalStorage
+│   │   └── __tests__/          # Vitest 回歸測試
+│   ├── App.tsx                 # 狀態管理
+│   └── index.css               # 全域樣式
+├── tailwind.config.ts          # 由 src/theme/tokens.ts 產生語意色 class
+└── vite.config.ts              # Vite 打包與測試設定
 ```
+
+---
+
+## ⚙️ 後端（Google Apps Script）設定
+
+1. 在綁定試算表的 Apps Script 專案貼上 `gas/Code.gs`。
+2. 「專案設定 → 指令碼屬性」填入：`LINE_CHANNEL_ACCESS_TOKEN`、`GEMINI_API_KEY`、`API_SECRET_TOKEN`、（選填）`SPREADSHEET_ID`、`ALLOWED_USER_IDS`。
+3. （選填）在編輯器執行一次 `setupBudgetSheet` 建立「預算設定」分頁。
+4. 「部署 → 管理部署作業 → 編輯 → 新版本」更新**同一個**部署，網址才不會變；LINE Webhook 與前端都連這個網址。
+5. 在前端「雲端連線設定」貼上網址與 `API_SECRET_TOKEN`（每個裝置各設定一次）。
 
 ---
 
@@ -81,7 +79,7 @@ account_web/
 ### 1. 複製專案與安裝依賴
 ```bash
 git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-cd personal-finance-dashboard
+cd account_web
 npm install
 ```
 
@@ -96,6 +94,12 @@ npm run dev
 npm run build
 ```
 產出的正式靜態檔案將儲存在 `dist/` 目錄中。
+
+### 4. 執行測試
+```bash
+npm test
+```
+涵蓋金額千分位、時區月份、日期格式、預算與累計走勢等計算。
 
 ---
 

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Menu, Calendar, RefreshCw, Coffee, Sun, Moon } from 'lucide-react';
 import { DataSource } from '../types/finance';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { useNow } from '../hooks/useNow';
 
 const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 
@@ -32,12 +33,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
   lastSyncTime,
   syncError,
 }) => {
-  // Re-render every minute so "x 分鐘前" stays current.
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 60000);
-    return () => window.clearInterval(id);
-  }, []);
+  const now = useNow();
 
   // Determine greeting based on current hour
   const currentHour = new Date().getHours();

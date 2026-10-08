@@ -8,6 +8,8 @@ import {
   Wallet
 } from 'lucide-react';
 import { DataSource } from '../types/finance';
+import { formatRelativeTime } from '../utils/dateUtils';
+import { useNow } from '../hooks/useNow';
 
 interface SidebarProps {
   activeTab: 'dashboard' | 'monthly';
@@ -17,6 +19,7 @@ interface SidebarProps {
   onRefresh: () => void;
   onOpenSyncModal: () => void;
   lastSyncTime?: string;
+  lastSyncAt?: string;
   syncError?: string | null;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
@@ -30,10 +33,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRefresh,
   onOpenSyncModal,
   lastSyncTime,
+  lastSyncAt,
   syncError,
   isOpenMobile,
   onCloseMobile,
 }) => {
+  const now = useNow();
+  const syncLabel = formatRelativeTime(lastSyncAt, now) || lastSyncTime || '';
+
   useEffect(() => {
     if (!isOpenMobile) return;
     const previousOverflow = document.body.style.overflow;
@@ -53,13 +60,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Google 試算表',
       badge: '已同步',
       dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]',
-      description: lastSyncTime ? `上次同步：${lastSyncTime}` : '已與 LINE 記帳資料連線',
+      description: syncLabel ? `上次同步：${syncLabel}` : '已與 LINE 記帳資料連線',
     },
     cache: {
       label: '快取資料',
       badge: '非即時',
       dot: 'bg-amber-400',
-      description: lastSyncTime ? `上次成功：${lastSyncTime}` : '目前顯示上次保存的資料',
+      description: syncLabel ? `上次成功：${syncLabel}` : '目前顯示上次保存的資料',
     },
     error: {
       label: '同步失敗',

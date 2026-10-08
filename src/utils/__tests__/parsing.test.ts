@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
-import { formatDate, formatRelativeTime } from '../dateUtils';
+import { formatDate, formatRelativeTime, formatShortDateTime } from '../dateUtils';
 import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
@@ -153,5 +153,17 @@ describe('buildCumulativeSeries', () => {
   it('fills every day for a past month', () => {
     const s = buildCumulativeSeries(list, '2026-09', 0, new Date(2026, 9, 3));
     expect(s[29]).toMatchObject({ day: 30, cumulative: 80 });
+  });
+});
+
+describe('formatShortDateTime', () => {
+  it.each([
+    ['2026-10-07 12:05:33', '10/07 12:05'],
+    ['2026-10-07', '10/07'],
+    ['2026-10-07 00:00:00', '10/07'],
+    ['2026/5/9 下午 8:46:31', '05/09 20:46'],
+    ['not a date', 'not a date'],
+  ])('%s -> %s', (raw, expected) => {
+    expect(formatShortDateTime(raw)).toBe(expected);
   });
 });
