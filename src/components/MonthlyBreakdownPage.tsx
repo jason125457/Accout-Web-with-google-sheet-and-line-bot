@@ -3,8 +3,6 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   Cell,
   XAxis,
   YAxis,
@@ -13,7 +11,7 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X, BarChart3, LineChart as LineChartIcon, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X, Info } from 'lucide-react';
 import { Transaction, TransactionCategory, IrregularExpense } from '../types/finance';
 import { TransactionList } from './TransactionList';
 import { compareTransactionDates } from '../utils/dateUtils';
@@ -242,7 +240,6 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [range, setRange] = useState<Range>('12');
   const [isolated, setIsolated] = useState<TransactionCategory | null>(null);
-  const [view, setView] = useState<'bar' | 'line'>('bar');
   const [hoverMonth, setHoverMonth] = useState<string | null>(null);
   const selectedDetailRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<HTMLDivElement | null>(null);
@@ -386,14 +383,10 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h3 className="text-base font-extrabold text-ink tracking-tight">
-              {isolated ? `每月${isolated}支出` : view === 'bar' ? '每月支出組成' : '各類別支出走勢'}
+              {isolated ? `每月${isolated}支出` : '每月支出組成'}
             </h3>
             <p className="text-xs text-ink-muted mt-0.5">
-              {isolated
-                ? '只看單一類別，從同一基準比較各月'
-                : view === 'bar'
-                  ? '每月總額與各類別組成；點選類別可單獨比較'
-                  : '各類別每月走勢；空心點為進行中的月份'}
+              {isolated ? '只看單一類別，從同一基準比較各月' : '每月總額與各類別組成；點選類別可單獨比較'}
             </p>
           </div>
           <div className="flex items-center gap-2 self-start">
@@ -406,22 +399,6 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                 全部類別
               </button>
             )}
-            <div className="inline-flex p-1 rounded-xl bg-slate-50 border border-line" role="tablist" aria-label="圖表類型">
-              {([['bar', '直條', BarChart3], ['line', '折線', LineChartIcon]] as const).map(([key, label, Icon]) => (
-                <button
-                  key={key}
-                  role="tab"
-                  aria-selected={view === key}
-                  onClick={() => setView(key)}
-                  className={`inline-flex items-center gap-1 min-h-8 px-2.5 rounded-lg text-xs font-bold transition-colors ${
-                    view === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -445,7 +422,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
           })}
         </div>
 
-        {avgShown > 0 && (view === 'bar' || isolated) && (
+        {avgShown > 0 && (
           <p className="flex items-center gap-1.5 text-[11px] text-ink-muted font-medium mb-1">
             <svg width="18" height="6" aria-hidden="true" className="shrink-0">
               <line x1="1" y1="3" x2="17" y2="3" stroke={palette.goldDeep} strokeWidth="1.5" strokeDasharray="5 3" />
@@ -458,7 +435,6 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
         <div className="h-64 sm:h-80 w-full min-w-0 -ml-1">
           <ResponsiveContainer width="100%" height="100%">
-            {view === 'bar' ? (
               <BarChart data={chartData} margin={{ top: 22, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%" {...chartEvents}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
                 <XAxis {...xAxisProps} />
@@ -492,44 +468,6 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
                   </Bar>
                 ))}
               </BarChart>
-            ) : (
-              <LineChart data={chartData} margin={{ top: 16, right: 12, left: 0, bottom: 0 }} {...chartEvents}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
-                <XAxis {...xAxisProps} padding={{ left: 12, right: 12 }} />
-                <YAxis {...yAxisProps} />
-                <Tooltip content={() => null} cursor={{ stroke: palette.inkSubtle, strokeDasharray: '3 3' }} />
-                {/* Monthly-total average only makes sense against a single category line */}
-                {isolated && avgShown > 0 && (
-                  <ReferenceLine y={avgShown} stroke={palette.goldDeep} strokeDasharray="5 4" strokeWidth={1.5} />
-                )}
-                {selectedMonth && <ReferenceLine x={selectedMonth} stroke={palette.primary} strokeOpacity={0.35} strokeWidth={8} />}
-                {stackedCats.map(cat => {
-                  const color = categoryColor(cat);
-                  return (
-                    <Line
-                      key={cat}
-                      // Straight segments: months are discrete, a smoothed curve would invent in-between values
-                      type="linear"
-                      dataKey={cat}
-                      stroke={color}
-                      strokeWidth={isolated ? 2.5 : 2}
-                      isAnimationActive={false}
-                      activeDot={{ r: 5, fill: color, stroke: palette.surface, strokeWidth: 2 }}
-                      dot={(props: { cx?: number; cy?: number; payload?: ChartRow; index?: number }) => {
-                        const { cx, cy, payload, index } = props;
-                        if (cx === undefined || cy === undefined) return <g key={`${cat}-${index}`} />;
-                        // In-progress month: hollow marker, the value is still growing
-                        return payload?.isInProgress ? (
-                          <circle key={`${cat}-${index}`} cx={cx} cy={cy} r={4} fill={palette.surface} stroke={color} strokeWidth={2} />
-                        ) : (
-                          <circle key={`${cat}-${index}`} cx={cx} cy={cy} r={3.5} fill={color} stroke={palette.surface} strokeWidth={1.5} />
-                        );
-                      }}
-                    />
-                  );
-                })}
-              </LineChart>
-            )}
           </ResponsiveContainer>
         </div>
 
