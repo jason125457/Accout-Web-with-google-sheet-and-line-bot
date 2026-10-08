@@ -19,6 +19,14 @@ export interface MonthlySummary {
 /** User-defined monthly budget per category, from the 「預算設定」 sheet. Missing = not set. */
 export type CategoryBudgets = Partial<Record<TransactionCategory, number>>;
 
+/** One-off large expense from the 「不固定大額支出」 sheet; kept out of monthly totals. */
+export interface IrregularExpense {
+  id: string;
+  item: string;
+  amount: number;
+  date: string; // optional, '' when the sheet has no date column
+}
+
 export interface CategorySummary {
   category: string;
   totalAmount: number;

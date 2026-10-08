@@ -13,8 +13,8 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
-import { Transaction, TransactionCategory } from '../types/finance';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X, BarChart3, LineChart as LineChartIcon, Info } from 'lucide-react';
+import { Transaction, TransactionCategory, IrregularExpense } from '../types/finance';
 import { TransactionList } from './TransactionList';
 import { compareTransactionDates } from '../utils/dateUtils';
 import { palette, categoryColor } from '../theme/tokens';
@@ -28,6 +28,7 @@ import {
 
 interface MonthlyBreakdownPageProps {
   transactions: Transaction[];
+  irregular?: IrregularExpense[];
 }
 
 type Range = '6' | '12' | 'all';
@@ -121,6 +122,67 @@ const MonthDetailStrip: React.FC<{
   );
 };
 
+/**
+ * One-off large expenses from the 「不固定大額支出」 sheet. Shown on their own and never added
+ * to monthly totals, averages or charts, so they don't distort the regular monthly picture.
+ */
+const IrregularExpensesCard: React.FC<{ items: IrregularExpense[]; monthlyAvg: number }> = ({ items, monthlyAvg }) => {
+  const total = items.reduce((sum, x) => sum + x.amount, 0);
+  const max = items[0]?.amount ?? 0;
+  const monthsEquivalent = monthlyAvg > 0 ? total / monthlyAvg : 0;
+  return (
+    <section className="fintech-card p-4 sm:p-6 min-w-0" aria-label="不固定大額支出">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 mb-4">
+        <div>
+          <h3 className="text-base font-extrabold text-ink tracking-tight">不固定大額支出</h3>
+          <p className="flex items-center gap-1 text-xs text-ink-muted mt-0.5">
+            <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            來自試算表「不固定大額支出」分頁，不計入上方每月統計
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-4 space-y-3">
+          <div>
+            <p className="text-[11px] font-bold text-ink-muted">合計</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums">{fmt(total)}</p>
+            <p className="text-[11px] text-ink-subtle font-medium">{items.length} 筆</p>
+          </div>
+          {monthsEquivalent > 0 && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200/60 px-3 py-2.5">
+              <p className="text-xs text-amber-900 font-medium">
+                約等於 <span className="font-extrabold tabular-nums">{monthsEquivalent.toFixed(1)}</span> 個月的日常花費
+              </p>
+              <p className="text-[10px] text-amber-800/80 mt-0.5">以月平均 {fmt(monthlyAvg)} 換算</p>
+            </div>
+          )}
+        </div>
+
+        <ul className="md:col-span-8 space-y-2.5">
+          {items.map(x => (
+            <li key={x.id} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="font-bold text-ink truncate">
+                  {x.item}
+                  {x.date && <span className="ml-1.5 font-medium text-ink-subtle">{x.date}</span>}
+                </span>
+                <span className="shrink-0 tabular-nums">
+                  <span className="font-extrabold text-ink">{fmt(x.amount)}</span>
+                  <span className="ml-1.5 text-ink-subtle font-medium">{total > 0 ? Math.round((x.amount / total) * 100) : 0}%</span>
+                </span>
+              </div>
+              <div className="h-1.5 mt-1 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full bg-gold" style={{ width: `${max > 0 ? (x.amount / max) * 100 : 0}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+};
+
 /** One small chart per category so each can be compared across months from a shared baseline. */
 const CategoryTrendCard: React.FC<{
   category: TransactionCategory;
@@ -176,7 +238,7 @@ const CategoryTrendCard: React.FC<{
   );
 };
 
-export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ transactions }) => {
+export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ transactions, irregular = [] }) => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [range, setRange] = useState<Range>('12');
   const [isolated, setIsolated] = useState<TransactionCategory | null>(null);
@@ -494,6 +556,9 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
           ))}
         </div>
       </section>
+
+      {/* ── One-off large expenses (kept out of the monthly numbers above) ── */}
+      {irregular.length > 0 && <IrregularExpensesCard items={irregular} monthlyAvg={avgTotal} />}
 
       {/* ── Month cards ── */}
       <section aria-label="各月份摘要">

@@ -41,6 +41,7 @@ const TIMEZONE = 'Asia/Taipei';
 const DETAIL_SHEET_NAME = '記帳明細';
 const SUMMARY_SHEET_NAME = '月度彙總';
 const BUDGET_SHEET_NAME = '預算設定';
+const IRREGULAR_SHEET_NAME = '不固定大額支出';
 
 // 模型備援鏈：Gemini 3.x 使用 thinkingLevel，2.5 系列使用 thinkingBudget（兩者不可同時傳）
 // 兩個 Flash-Lite 各有獨立的免費額度（各 500 RPD），一個 503 滿載時另一個通常可用
@@ -589,7 +590,8 @@ function doGet(e) {
     if (params.v === '2') {
       const records = readRecords(detailSheet);
       const budgets = readBudgets(ss);
-      return jsonOutput({ status: 'success', version: 2, records, summary: summarize(records), budgets, updatedAt });
+      const irregular = readIrregular(ss);
+      return jsonOutput({ status: 'success', version: 2, records, summary: summarize(records), budgets, irregular, updatedAt });
     }
 
     // v1（舊版前端相容）：原始顯示字串
@@ -676,6 +678,36 @@ function readBudgets(ss) {
 }
 
 /**
+ * 讀取「不固定大額支出」分頁（不計入每月支出）。自動尋找含「項目」與「金額」的標題列，
+ * 標題列上方可以有說明文字；若有「日期 / 時間 / 月份」欄也會一併回傳。
+ */
+function readIrregular(ss) {
+  const sheet = ss.getSheetByName(IRREGULAR_SHEET_NAME);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  const headerRow = values.findIndex(row => row.some(c => String(c).trim() === '項目') && row.some(c => String(c).includes('金額')));
+  if (headerRow < 0) return [];
+
+  const header = values[headerRow].map(c => String(c).trim());
+  const itemIdx = header.indexOf('項目');
+  const amtIdx = header.findIndex(h => h.includes('金額'));
+  const dateIdx = header.findIndex(h => ['日期', '時間', '月份'].includes(h));
+
+  const items = [];
+  values.slice(headerRow + 1).forEach((row, i) => {
+    const item = String(row[itemIdx] || '').trim();
+    const amount = typeof row[amtIdx] === 'number' ? row[amtIdx] : Number(String(row[amtIdx]).replace(/[^\d.]/g, '')) || 0;
+    if (!item || amount <= 0) return;
+    const rawDate = dateIdx >= 0 ? row[dateIdx] : '';
+    const date = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, TIMEZONE, 'yyyy-MM-dd')
+      : String(rawDate || '').trim();
+    items.push({ id: 'x' + (headerRow + i + 2), item, amount, date });
+  });
+  return items;
+}
+
+/**
  * 【手動執行一次】建立「預算設定」工作表，預填近 6 個完整月份各類別的平均支出（取整到百位）當起點。
  * 已存在時不覆蓋，避免蓋掉你填好的預算。
  */
@@ -757,6 +789,10 @@ function testWriteToSheet() {
 
 function testUndo() {
   Logger.log(undoLastBatch('editor-test'));
+}
+
+function testReadIrregular() {
+  Logger.log(JSON.stringify(readIrregular(getSpreadsheet())));
 }
 
 function testDoGetV2() {

@@ -9,9 +9,9 @@ import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
 import { BudgetProgressPanel } from './components/BudgetProgressPanel';
 import { SyncModal } from './components/SyncModal';
-import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource, CategoryBudgets } from './types/finance';
+import { Transaction, MonthlySummary, GasConfig, FilterState, DataSource, CategoryBudgets, IrregularExpense } from './types/finance';
 import { fetchFromGas, normalizeMonthString } from './utils/gasApi';
-import { DEMO_TRANSACTIONS, DEMO_SUMMARIES } from './utils/demoData';
+import { DEMO_TRANSACTIONS, DEMO_SUMMARIES, DEMO_IRREGULAR } from './utils/demoData';
 import { calculateDynamicMonthlySummaries, getCurrentMonthString } from './utils/financeCalculations';
 import { compareTransactionDates } from './utils/dateUtils';
 import {
@@ -30,6 +30,7 @@ export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [monthlySummaries, setMonthlySummaries] = useState<MonthlySummary[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudgets>({});
+  const [irregular, setIrregular] = useState<IrregularExpense[]>([]);
   const [gasConfig, setGasConfig] = useState<GasConfig>(getGasConfig());
   const [dataSource, setDataSource] = useState<DataSource>('demo');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export const App: React.FC = () => {
     setTransactions(details);
     setMonthlySummaries(DEMO_SUMMARIES);
     setBudgets({});
+    setIrregular(DEMO_IRREGULAR);
     selectDefaultMonth(details, DEMO_SUMMARIES);
     setDataSource('demo');
   };
@@ -109,6 +111,7 @@ export const App: React.FC = () => {
     details: Transaction[],
     summary: MonthlySummary[],
     newBudgets: CategoryBudgets,
+    newIrregular: IrregularExpense[],
     config: GasConfig
   ): string => {
     setTransactions(details);
@@ -117,7 +120,8 @@ export const App: React.FC = () => {
     setDataSource('cloud');
     setSyncError(null);
     setBudgets(newBudgets);
-    saveCachedData({ details, summary, budgets: newBudgets });
+    setIrregular(newIrregular);
+    saveCachedData({ details, summary, budgets: newBudgets, irregular: newIrregular });
     const nowStr = new Date().toLocaleString('zh-TW');
     const updatedConfig = { ...config, lastSyncTime: nowStr, lastSyncAt: new Date().toISOString() };
     setGasConfig(updatedConfig);
@@ -145,6 +149,7 @@ export const App: React.FC = () => {
         setTransactions(details);
         setMonthlySummaries(cleanSummary);
         setBudgets(cache.budgets ?? {});
+        setIrregular(cache.irregular ?? []);
         selectDefaultMonth(details, cleanSummary);
         setDataSource('cache');
         setIsLoading(false);
@@ -161,7 +166,7 @@ export const App: React.FC = () => {
       setIsSyncing(false);
 
       if (res.success && res.details && res.summary) {
-        applyCloudData(res.details, res.summary, res.budgets ?? {}, savedConfig);
+        applyCloudData(res.details, res.summary, res.budgets ?? {}, res.irregular ?? [], savedConfig);
       } else {
         const message = res.message || '無法連線 Google 試算表。';
         if (!hasCache) {
@@ -188,7 +193,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      const nowStr = applyCloudData(res.details, res.summary, res.budgets ?? {}, gasConfig);
+      const nowStr = applyCloudData(res.details, res.summary, res.budgets ?? {}, res.irregular ?? [], gasConfig);
       showToast('success', `同步成功！已由 Google 雲端更新至最新資料 (${nowStr})。`);
     } else {
       const message = res.message || '連線 Google 失敗，請確認 Apps Script 部署。';
@@ -205,7 +210,7 @@ export const App: React.FC = () => {
     setIsSyncing(false);
 
     if (res.success && res.details && res.summary) {
-      applyCloudData(res.details, res.summary, res.budgets ?? {}, newConfig);
+      applyCloudData(res.details, res.summary, res.budgets ?? {}, res.irregular ?? [], newConfig);
       showToast('success', 'Google 試算表連線成功！已載入最新雲端資料。');
       return true;
     } else {
@@ -473,6 +478,7 @@ export const App: React.FC = () => {
             <Suspense fallback={<div className="py-32 text-center text-sm text-slate-400">載入中…</div>}>
               <MonthlyBreakdownPage
                 transactions={transactions}
+                irregular={irregular}
               />
             </Suspense>
           )}

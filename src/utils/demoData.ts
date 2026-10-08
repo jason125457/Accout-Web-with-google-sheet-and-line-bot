@@ -98,3 +98,12 @@ function buildDemoSummaries(): MonthlySummary[] {
 }
 
 export const DEMO_SUMMARIES: MonthlySummary[] = buildDemoSummaries();
+
+// Demo one-off large expenses (「不固定大額支出」), shown separately from monthly totals.
+export const DEMO_IRREGULAR = [
+  { id: 'demo-x1', item: '年度保險', amount: 32000, date: '' },
+  { id: 'demo-x2', item: '日本旅遊', amount: 24500, date: '' },
+  { id: 'demo-x3', item: '健身房年費', amount: 12800, date: '' },
+  { id: 'demo-x4', item: '演唱會門票', amount: 4800, date: '' },
+  { id: 'demo-x5', item: '機車保險', amount: 1500, date: '' },
+];

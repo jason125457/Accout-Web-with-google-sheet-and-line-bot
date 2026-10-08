@@ -112,6 +112,7 @@ account_web/
 - 前端呼叫 doGet 一律帶 `v=2`。新版 GAS 回傳 `records: [{id, date, item, category, amount, month}]`：日期已用 `Asia/Taipei` 格式化為 `yyyy-MM-dd HH:mm:ss`、金額為數字、`id` 為試算表列號（`r12`）。
 - 舊版 GAS 會忽略 `v` 並回傳 `details`（`getDisplayValues()` 二維字串陣列），前端仍以 `normalizeGasDetails` 相容處理。兩條路徑都要保留，直到確認線上 GAS 已更新。
 - 「月度彙總」工作表不再由程式累加；前端月總額一律從明細計算（`calculateDynamicMonthlySummaries`）。
+- 「不固定大額支出」分頁（標題列含「項目」「金額」，可選「日期」）由 `readIrregular` 讀取，doGet v2 回傳 `irregular`。**刻意不計入任何每月總額、平均或圖表**，只在每月花費分析頁的獨立卡片顯示。
 - LINE 端：`ALLOWED_USER_IDS` 指令碼屬性為白名單（留空不限制）；「我的ID」查 userId、「撤銷」刪除上一批 LINE 寫入（會先比對內容）。寫入一律包在 `LockService` 內。
 - LINE 解析分兩層：`parseSimpleRecords` 先以規則處理「項目 金額」（分類靠 `CATEGORY_KEYWORDS`），只要有日期詞、運算或認不出分類就回傳 null 交給 Gemini。新增常用店家請加到 `CATEGORY_KEYWORDS`。
 - 線上只維護一個部署「Claude最新版」（`AKfycbyCVO01…`），LINE Webhook 與前端都連它；其他舊部署未封存但已不使用。

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
+import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets, normalizeIrregular } from '../gasApi';
 import { formatDate, formatRelativeTime, formatShortDateTime } from '../dateUtils';
 import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd, buildMonthCategoryRows, averageCompletedMonths } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
@@ -186,5 +186,20 @@ describe('monthly category rows', () => {
     const rows = buildMonthCategoryRows(list, '2026-10');
     expect(averageCompletedMonths(rows)).toBe(750);           // (500 + 1000) / 2, October excluded
     expect(averageCompletedMonths(rows, '生活')).toBe(400);   // (500 + 300) / 2
+  });
+});
+
+describe('normalizeIrregular', () => {
+  it('keeps valid rows, parses text amounts and sorts by amount', () => {
+    expect(normalizeIrregular([
+      { id: 'x3', item: '機車保險', amount: 1518, date: '' },
+      { id: 'x5', item: '韓國遊', amount: '27,000', date: '2026-05-02' },
+      { id: 'x6', item: '', amount: 100 },
+      { id: 'x7', item: '保險', amount: 0 },
+    ])).toEqual([
+      { id: 'x5', item: '韓國遊', amount: 27000, date: '2026-05-02' },
+      { id: 'x3', item: '機車保險', amount: 1518, date: '' },
+    ]);
+    expect(normalizeIrregular(undefined)).toEqual([]);
   });
 });

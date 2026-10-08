@@ -1,4 +1,4 @@
-import { Transaction, MonthlySummary, CategoryBudgets, TransactionCategory } from '../types/finance';
+import { Transaction, MonthlySummary, CategoryBudgets, TransactionCategory, IrregularExpense } from '../types/finance';
 import { formatDate, compareTransactionDates } from './dateUtils';
 import { normalizeCategory, STANDARD_CATEGORIES } from '../constants/categories';
 
@@ -49,6 +49,7 @@ export interface GasFetchResult {
   details?: Transaction[];
   summary?: MonthlySummary[];
   budgets?: CategoryBudgets;
+  irregular?: IrregularExpense[];
   updatedAt?: string;
 }
 
@@ -159,6 +160,19 @@ export function normalizeGasRecords(rawRecords: any[]): Transaction[] {
   return transactions;
 }
 
+export function normalizeIrregular(raw: unknown): IrregularExpense[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((r, i) => ({
+      id: String(r?.id ?? `x${i}`),
+      item: String(r?.item ?? '').trim(),
+      amount: parseAmount(r?.amount),
+      date: r?.date ? formatDate(r.date).slice(0, 10) : '',
+    }))
+    .filter(r => r.item && r.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
+}
+
 export function normalizeBudgets(raw: unknown): CategoryBudgets {
   const budgets: CategoryBudgets = {};
   if (!raw || typeof raw !== 'object') return budgets;
@@ -258,6 +272,7 @@ export async function fetchFromGas(webAppUrl: string, secretToken: string): Prom
       details,
       summary,
       budgets: normalizeBudgets(data.budgets),
+      irregular: normalizeIrregular(data.irregular),
       updatedAt: data.updatedAt || new Date().toISOString()
     };
   } catch (error: any) {
