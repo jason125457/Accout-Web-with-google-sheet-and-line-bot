@@ -3,6 +3,8 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   Cell,
   XAxis,
   YAxis,
@@ -10,9 +12,8 @@ import {
   CartesianGrid,
   ReferenceLine,
   LabelList,
-  TooltipProps,
 } from 'recharts';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, X, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
 import { Transaction, TransactionCategory } from '../types/finance';
 import { TransactionList } from './TransactionList';
 import { compareTransactionDates } from '../utils/dateUtils';
@@ -74,46 +75,48 @@ interface ChartRow extends Record<string, string | number | boolean> {
   isInProgress: boolean;
 }
 
-const CompositionTooltip: React.FC<
-  TooltipProps<number, string> & { avg: number; isolated: TransactionCategory | null }
-> = ({ active, payload, avg, isolated }) => {
-  if (!active || !payload?.length) return null;
-  const row = payload[0].payload as ChartRow;
+/**
+ * Fixed detail strip under the chart. Replaces a floating tooltip so nothing ever covers the bars;
+ * hovering or tapping a month only changes what this strip shows.
+ */
+const MonthDetailStrip: React.FC<{
+  row: ChartRow;
+  avg: number;
+  isolated: TransactionCategory | null;
+  isPinned: boolean;
+}> = ({ row, avg, isolated, isPinned }) => {
   const shown = isolated ? (row[isolated] as number) : row.total;
   const delta = row.isInProgress ? null : pctChange(shown, avg);
-  // List categories top-to-bottom, matching the stack the reader is looking at.
-  const cats = (isolated ? [isolated] : [...STANDARD_CATEGORIES].reverse()).filter(c => (row[c] as number) > 0);
+  const cats = (isolated ? [isolated] : [...STANDARD_CATEGORIES]).filter(c => (row[c] as number) > 0);
   return (
-    <div className="bg-surface border border-line rounded-xl shadow-lg px-3 py-2.5 text-xs min-w-[190px] space-y-1.5">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-bold text-ink">{monthLong(row.month)}</p>
+    <div className="mt-3 rounded-2xl border border-line bg-slate-50/60 px-3.5 py-3" aria-live="polite">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <p className="text-sm font-extrabold text-ink">{monthLong(row.month)}</p>
         {row.isInProgress && <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">進行中</span>}
+        <p className="text-sm font-extrabold text-ink tabular-nums">
+          <span className="text-xs font-semibold text-ink-muted mr-1">{isolated ? `${isolated}` : '合計'}</span>
+          {fmt(shown)}
+        </p>
+        {delta !== null && <DeltaPill pct={delta} />}
+        <span className="ml-auto text-[10px] text-ink-subtle">
+          {isPinned ? '已選取 · 下方已展開明細' : '移到其他月份可切換 · 點擊展開明細'}
+        </span>
       </div>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ink-muted font-medium">{isolated ? `${isolated}支出` : '合計'}</span>
-        <span className="text-sm font-extrabold text-ink tabular-nums">{fmt(shown)}</span>
-      </div>
-      {delta !== null && <DeltaPill pct={delta} />}
-      <div className="border-t border-line pt-1.5 space-y-1">
-        {cats.map(c => {
-          const v = row[c] as number;
-          return (
-            <div key={c} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-1.5 text-ink-muted font-medium">
+      {!isolated && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {cats.map(c => {
+            const v = row[c] as number;
+            return (
+              <span key={c} className="flex items-center gap-1.5 text-xs">
                 <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: categoryColor(c) }} aria-hidden="true" />
-                {c}
+                <span className="text-ink-muted font-medium">{c}</span>
+                <span className="text-ink font-bold tabular-nums">{fmt(v)}</span>
+                {row.total > 0 && <span className="text-ink-subtle tabular-nums">{Math.round((v / row.total) * 100)}%</span>}
               </span>
-              <span className="tabular-nums text-ink font-semibold">
-                {fmt(v)}
-                {!isolated && row.total > 0 && (
-                  <span className="ml-1.5 text-ink-subtle font-medium">{Math.round((v / row.total) * 100)}%</span>
-                )}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-[10px] text-ink-subtle">點擊長條查看當月明細</p>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -177,6 +180,8 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [range, setRange] = useState<Range>('12');
   const [isolated, setIsolated] = useState<TransactionCategory | null>(null);
+  const [view, setView] = useState<'bar' | 'line'>('bar');
+  const [hoverMonth, setHoverMonth] = useState<string | null>(null);
   const selectedDetailRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<HTMLDivElement | null>(null);
 
@@ -201,6 +206,53 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   }));
   const stackedCats: TransactionCategory[] = isolated ? [isolated] : [...STANDARD_CATEGORIES];
   const topCat = stackedCats[stackedCats.length - 1];
+
+  // The strip shows the hovered month, else the selected one, else the latest month.
+  const stripMonth = hoverMonth ?? selectedMonth ?? chartData[chartData.length - 1]?.month;
+  const stripRow = chartData.find(d => d.month === stripMonth);
+
+  const chartEvents = {
+    onMouseMove: (state: { activeLabel?: string }) => {
+      if (state?.activeLabel) setHoverMonth(state.activeLabel);
+    },
+    onMouseLeave: () => setHoverMonth(null),
+    onClick: (state: { activeLabel?: string }) => {
+      const m = state?.activeLabel;
+      if (m) setSelectedMonth(prev => (prev === m ? null : m));
+    },
+    style: { cursor: 'pointer' },
+  };
+
+  const xAxisProps = {
+    dataKey: 'month',
+    tickLine: false,
+    axisLine: { stroke: palette.axis },
+    interval: 'preserveStartEnd' as const,
+    height: 34,
+    tick: ({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
+      const row = rows.find(r => r.month === payload.value);
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text dy={14} textAnchor="middle" fontSize={11} fontWeight={600} fill={palette.inkMuted}>
+            {monthShort(payload.value)}
+          </text>
+          {row?.isInProgress && (
+            <text dy={27} textAnchor="middle" fontSize={9} fontWeight={700} fill={palette.goldDeep}>
+              進行中
+            </text>
+          )}
+        </g>
+      );
+    },
+  };
+
+  const yAxisProps = {
+    tick: { fontSize: 10, fill: palette.inkSubtle },
+    tickLine: false,
+    axisLine: false,
+    tickFormatter: fmtCompact,
+    width: 38,
+  };
 
   const selectedTxns = useMemo(() => {
     if (!selectedMonth) return [];
@@ -272,21 +324,43 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h3 className="text-base font-extrabold text-ink tracking-tight">
-              {isolated ? `每月${isolated}支出` : '每月支出組成'}
+              {isolated ? `每月${isolated}支出` : view === 'bar' ? '每月支出組成' : '各類別支出走勢'}
             </h3>
             <p className="text-xs text-ink-muted mt-0.5">
-              {isolated ? '只看單一類別，從同一基準比較各月' : '點選下方類別可單獨比較；點擊長條查看當月明細'}
+              {isolated
+                ? '只看單一類別，從同一基準比較各月'
+                : view === 'bar'
+                  ? '每月總額與各類別組成；點選類別可單獨比較'
+                  : '各類別每月走勢；空心點為進行中的月份'}
             </p>
           </div>
-          {isolated && (
-            <button
-              onClick={() => setIsolated(null)}
-              className="inline-flex items-center gap-1 self-start min-h-9 px-3 rounded-xl border border-line text-xs font-bold text-ink-muted hover:text-ink"
-            >
-              <X className="w-3.5 h-3.5" aria-hidden="true" />
-              顯示全部類別
-            </button>
-          )}
+          <div className="flex items-center gap-2 self-start">
+            {isolated && (
+              <button
+                onClick={() => setIsolated(null)}
+                className="inline-flex items-center gap-1 min-h-9 px-3 rounded-xl border border-line text-xs font-bold text-ink-muted hover:text-ink"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+                全部類別
+              </button>
+            )}
+            <div className="inline-flex p-1 rounded-xl bg-slate-50 border border-line" role="tablist" aria-label="圖表類型">
+              {([['bar', '直條', BarChart3], ['line', '折線', LineChartIcon]] as const).map(([key, label, Icon]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={view === key}
+                  onClick={() => setView(key)}
+                  className={`inline-flex items-center gap-1 min-h-8 px-2.5 rounded-lg text-xs font-bold transition-colors ${
+                    view === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Interactive legend: identity is carried by label + swatch, and doubles as the isolate control */}
@@ -309,7 +383,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
           })}
         </div>
 
-        {avgShown > 0 && (
+        {avgShown > 0 && (view === 'bar' || isolated) && (
           <p className="flex items-center gap-1.5 text-[11px] text-ink-muted font-medium mb-1">
             <svg width="18" height="6" aria-hidden="true" className="shrink-0">
               <line x1="1" y1="3" x2="17" y2="3" stroke={palette.goldDeep} strokeWidth="1.5" strokeDasharray="5 3" />
@@ -322,97 +396,83 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
         <div className="h-64 sm:h-80 w-full min-w-0 -ml-1">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 22, right: 8, left: 0, bottom: 0 }}
-              barCategoryGap="22%"
-              onClick={(data) => {
-                const m = data?.activePayload?.[0]?.payload?.month as string | undefined;
-                if (m) setSelectedMonth(prev => (prev === m ? null : m));
-              }}
-              style={{ cursor: 'pointer' }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                axisLine={{ stroke: palette.axis }}
-                interval="preserveStartEnd"
-                tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
-                  const row = rows.find(r => r.month === payload.value);
-                  return (
-                    <g transform={`translate(${x},${y})`}>
-                      <text dy={14} textAnchor="middle" fontSize={11} fontWeight={600} fill={palette.inkMuted}>
-                        {monthShort(payload.value)}
-                      </text>
-                      {row?.isInProgress && (
-                        <text dy={27} textAnchor="middle" fontSize={9} fontWeight={700} fill={palette.goldDeep}>
-                          進行中
-                        </text>
-                      )}
-                    </g>
-                  );
-                }}
-                height={34}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: palette.inkSubtle }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={fmtCompact}
-                width={38}
-              />
-              <Tooltip
-                cursor={{ fill: palette.hover }}
-                content={<CompositionTooltip avg={avgShown} isolated={isolated} />}
-              />
-              {avgShown > 0 && (
-                <ReferenceLine
-                  y={avgShown}
-                  stroke={palette.goldDeep}
-                  strokeDasharray="5 4"
-                  strokeWidth={1.5}
-                />
-              )}
-              {stackedCats.map(cat => (
-                <Bar
-                  key={cat}
-                  dataKey={cat}
-                  stackId="month"
-                  fill={categoryColor(cat)}
-                  stroke={palette.surface}
-                  strokeWidth={stackedCats.length > 1 ? 2 : 0}
-                  radius={cat === topCat ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  {chartData.map(d => {
-                    const dimmed = selectedMonth !== null && selectedMonth !== d.month;
-                    return (
-                      <Cell
-                        key={d.month}
-                        fillOpacity={d.isInProgress ? 0.45 : dimmed ? 0.35 : 1}
+            {view === 'bar' ? (
+              <BarChart data={chartData} margin={{ top: 22, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%" {...chartEvents}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
+                <XAxis {...xAxisProps} />
+                <YAxis {...yAxisProps} />
+                <Tooltip content={() => null} cursor={{ fill: palette.hover }} />
+                {avgShown > 0 && <ReferenceLine y={avgShown} stroke={palette.goldDeep} strokeDasharray="5 4" strokeWidth={1.5} />}
+                {stackedCats.map(cat => (
+                  <Bar
+                    key={cat}
+                    dataKey={cat}
+                    stackId="month"
+                    fill={categoryColor(cat)}
+                    stroke={palette.surface}
+                    strokeWidth={stackedCats.length > 1 ? 2 : 0}
+                    radius={cat === topCat ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    isAnimationActive={false}
+                  >
+                    {chartData.map(d => {
+                      const dimmed = selectedMonth !== null && selectedMonth !== d.month;
+                      return <Cell key={d.month} fillOpacity={d.isInProgress ? 0.45 : dimmed ? 0.35 : 1} />;
+                    })}
+                    {cat === topCat && (
+                      <LabelList
+                        dataKey={isolated ?? 'total'}
+                        position="top"
+                        offset={6}
+                        formatter={(v: number) => (v > 0 ? fmtCompact(v) : '')}
+                        style={{ fontSize: 10, fontWeight: 700, fill: palette.ink }}
                       />
-                    );
-                  })}
-                  {cat === topCat && (
-                    <LabelList
-                      dataKey={isolated ?? 'total'}
-                      position="top"
-                      offset={6}
-                      formatter={(v: number) => (v > 0 ? fmtCompact(v) : '')}
-                      style={{ fontSize: 10, fontWeight: 700, fill: palette.ink }}
+                    )}
+                  </Bar>
+                ))}
+              </BarChart>
+            ) : (
+              <LineChart data={chartData} margin={{ top: 16, right: 12, left: 0, bottom: 0 }} {...chartEvents}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
+                <XAxis {...xAxisProps} padding={{ left: 12, right: 12 }} />
+                <YAxis {...yAxisProps} />
+                <Tooltip content={() => null} cursor={{ stroke: palette.inkSubtle, strokeDasharray: '3 3' }} />
+                {/* Monthly-total average only makes sense against a single category line */}
+                {isolated && avgShown > 0 && (
+                  <ReferenceLine y={avgShown} stroke={palette.goldDeep} strokeDasharray="5 4" strokeWidth={1.5} />
+                )}
+                {selectedMonth && <ReferenceLine x={selectedMonth} stroke={palette.primary} strokeOpacity={0.35} strokeWidth={8} />}
+                {stackedCats.map(cat => {
+                  const color = categoryColor(cat);
+                  return (
+                    <Line
+                      key={cat}
+                      // Straight segments: months are discrete, a smoothed curve would invent in-between values
+                      type="linear"
+                      dataKey={cat}
+                      stroke={color}
+                      strokeWidth={isolated ? 2.5 : 2}
+                      isAnimationActive={false}
+                      activeDot={{ r: 5, fill: color, stroke: palette.surface, strokeWidth: 2 }}
+                      dot={(props: { cx?: number; cy?: number; payload?: ChartRow; index?: number }) => {
+                        const { cx, cy, payload, index } = props;
+                        if (cx === undefined || cy === undefined) return <g key={`${cat}-${index}`} />;
+                        // In-progress month: hollow marker, the value is still growing
+                        return payload?.isInProgress ? (
+                          <circle key={`${cat}-${index}`} cx={cx} cy={cy} r={4} fill={palette.surface} stroke={color} strokeWidth={2} />
+                        ) : (
+                          <circle key={`${cat}-${index}`} cx={cx} cy={cy} r={3.5} fill={color} stroke={palette.surface} strokeWidth={1.5} />
+                        );
+                      }}
                     />
-                  )}
-                </Bar>
-              ))}
-            </BarChart>
+                  );
+                })}
+              </LineChart>
+            )}
           </ResponsiveContainer>
         </div>
 
-        {selectedMonth && (
-          <p className="text-xs text-center text-primary-strong font-semibold mt-3 bg-teal-50 py-1.5 rounded-xl">
-            已選取 {monthLong(selectedMonth)} · 已展開當月明細
-          </p>
+        {stripRow && (
+          <MonthDetailStrip row={stripRow} avg={avgShown} isolated={isolated} isPinned={stripRow.month === selectedMonth} />
         )}
       </section>
 
