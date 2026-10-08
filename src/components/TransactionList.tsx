@@ -27,7 +27,7 @@ const CATEGORY_ICONS: Record<
   '家用': { bg: 'bg-blue-50', text: 'text-blue-600', pillBg: 'bg-blue-50', pillText: 'text-blue-700' },
   '社交': { bg: 'bg-pink-50', text: 'text-pink-600', pillBg: 'bg-pink-50', pillText: 'text-pink-700' },
   '娛樂': { bg: 'bg-amber-50', text: 'text-amber-600', pillBg: 'bg-amber-50', pillText: 'text-amber-700' },
-  '雜支': { bg: 'bg-slate-100', text: 'text-slate-600', pillBg: 'bg-slate-100', pillText: 'text-slate-700' },
+  '雜支': { bg: 'bg-violet-50', text: 'text-violet-700', pillBg: 'bg-violet-50', pillText: 'text-violet-800' },
 };
 
 export const TransactionList: React.FC<TransactionListProps> = ({

@@ -33,7 +33,9 @@
 
 ### 2.2 Category Color Mapping
 Use `categoryColor(category)` from `src/theme/tokens.ts` for chart fills and dots.
-- **生活**: `#0D9488` (Teal) · **家用**: `#2563EB` (Blue) · **社交**: `#EC4899` (Pink) · **娛樂**: `#F59E0B` (Amber) · **雜支**: `#64748B` (Slate)
+- **生活**: `#0D9488` (Teal) · **家用**: `#2563EB` (Blue) · **社交**: `#EC4899` (Pink) · **娛樂**: `#D97706` (Amber 600) · **雜支**: `#4A3AA7` (Deep violet)
+- Stacked charts always use this fixed order bottom → top. The set passes the dataviz palette validator for adjacent pairs
+  (lightness band, chroma floor, CVD separation, 3:1 contrast); identity is also carried by legends, labels and tooltips.
 
 ### 2.2b Budgets
 - Per-category monthly budgets come from the 「預算設定」 sheet (GAS `setupBudgetSheet()` creates it).

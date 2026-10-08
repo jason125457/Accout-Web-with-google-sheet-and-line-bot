@@ -57,7 +57,7 @@ account_web/
 │   │   ├── MonthCumulativeChart.tsx # 當月每日累計支出 vs 上月同期 vs 預算進度（單一 Y 軸，進行中月份止於今天）
 │   │   ├── BudgetProgressPanel.tsx # 類別支出進度 + 週末/平日洞察
 │   │   ├── TransactionList.tsx# 交易明細列表 (分頁、類別 Tag、搜尋、排序、大額徽章)
-│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析獨立頁（React.lazy 延遲載入）
+│   │   ├── MonthlyBreakdownPage.tsx # 每月花費分析頁（延遲載入）：期間切換、摘要卡、固定順序堆疊圖（可單獨比較類別）、各類別小圖、月份卡
 │   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
 │   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
 │   ├── constants/categoryIcons.ts # 每個分類一個專屬 Lucide 圖示（禁止用 emoji 當圖示）

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets } from '../gasApi';
 import { formatDate, formatRelativeTime, formatShortDateTime } from '../dateUtils';
-import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd } from '../financeCalculations';
+import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd, buildMonthCategoryRows, averageCompletedMonths } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
 
@@ -165,5 +165,26 @@ describe('formatShortDateTime', () => {
     ['not a date', 'not a date'],
   ])('%s -> %s', (raw, expected) => {
     expect(formatShortDateTime(raw)).toBe(expected);
+  });
+});
+
+describe('monthly category rows', () => {
+  const tx = (month: string, category: Transaction['category'], amount: number): Transaction => ({
+    id: month + category + amount, date: `${month}-05`, item: 'x', category, amount, month,
+  });
+  const list = [tx('2026-09', '生活', 300), tx('2026-09', '家用', 700), tx('2026-08', '生活', 500), tx('2026-10', '娛樂', 50), tx('bad', '生活', 1)];
+
+  it('groups by month in order, fills every category and flags the current month', () => {
+    const rows = buildMonthCategoryRows(list, '2026-10');
+    expect(rows.map(r => r.month)).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(rows[1]).toMatchObject({ total: 1000, isInProgress: false });
+    expect(rows[1].byCategory).toEqual({ '生活': 300, '家用': 700, '社交': 0, '娛樂': 0, '雜支': 0 });
+    expect(rows[2].isInProgress).toBe(true);
+  });
+
+  it('averages completed months only', () => {
+    const rows = buildMonthCategoryRows(list, '2026-10');
+    expect(averageCompletedMonths(rows)).toBe(750);           // (500 + 1000) / 2, October excluded
+    expect(averageCompletedMonths(rows, '生活')).toBe(400);   // (500 + 300) / 2
   });
 });

@@ -44,13 +44,16 @@ export const palette = {
   hover: '#F8FAFC',       // slate-50
 } as const;
 
-/** Category colors (chart fills and legend dots). */
+/**
+ * Category colors (chart fills and legend dots). Validated with the dataviz palette checker in the
+ * fixed stack order below (生活 → 雜支): lightness band, chroma floor, adjacent CVD separation, 3:1 contrast.
+ */
 export const categoryColors: Record<string, string> = {
   '生活': '#0D9488', // teal-600
   '家用': '#2563EB', // blue-600
   '社交': '#EC4899', // pink-500
-  '娛樂': '#F59E0B', // amber-500
-  '雜支': '#64748B', // slate-500
+  '娛樂': '#D97706', // amber-600 (amber-500 failed 3:1 contrast on white)
+  '雜支': '#4A3AA7', // deep violet (slate read as gray and failed the chroma floor)
 };
 
 export const categoryFallback = palette.inkSubtle;

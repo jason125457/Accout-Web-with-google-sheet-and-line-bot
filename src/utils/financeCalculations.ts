@@ -216,3 +216,44 @@ export function buildCumulativeSeries(
   }
   return points;
 }
+
+export interface MonthCategoryRow {
+  month: string;
+  total: number;
+  byCategory: Record<TransactionCategory, number>;
+  isInProgress: boolean; // the current calendar month, not finished yet
+}
+
+/** One row per month with spending split by the five standard categories, oldest first. */
+export function buildMonthCategoryRows(
+  transactions: Transaction[],
+  currentMonth: string = getCurrentMonthString()
+): MonthCategoryRow[] {
+  const map = new Map<string, Record<TransactionCategory, number>>();
+  transactions.forEach(t => {
+    if (!/^\d{4}-\d{2}$/.test(t.month)) return;
+    if (!map.has(t.month)) {
+      map.set(t.month, Object.fromEntries(STANDARD_CATEGORIES.map(c => [c, 0])) as Record<TransactionCategory, number>);
+    }
+    map.get(t.month)![t.category] += t.amount;
+  });
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, byCategory]) => ({
+      month,
+      byCategory,
+      total: STANDARD_CATEGORIES.reduce((sum, c) => sum + byCategory[c], 0),
+      isInProgress: month === currentMonth,
+    }));
+}
+
+/**
+ * Average monthly amount over completed months only — an unfinished month would drag it down.
+ * Pass a category to average that category; omit it for the monthly total.
+ */
+export function averageCompletedMonths(rows: MonthCategoryRow[], category?: TransactionCategory): number {
+  const done = rows.filter(r => !r.isInProgress);
+  if (done.length === 0) return 0;
+  const sum = done.reduce((acc, r) => acc + (category ? r.byCategory[category] : r.total), 0);
+  return Math.round(sum / done.length);
+}

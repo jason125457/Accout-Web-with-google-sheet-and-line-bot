@@ -4,6 +4,7 @@ import { Transaction, MonthlySummary, TransactionCategory, CategoryBudgets } fro
 import { calculateSixMonthAverage, resolveCategoryBudgets } from '../utils/financeCalculations';
 import { STANDARD_CATEGORIES } from '../constants/categories';
 import { categoryIcon } from '../constants/categoryIcons';
+import { categoryColor } from '../theme/tokens';
 import { parseFlexibleDate } from '../utils/dateUtils';
 
 interface BudgetProgressPanelProps {
@@ -15,13 +16,13 @@ interface BudgetProgressPanelProps {
 
 const CATEGORY_META: Record<
   string,
-  { color: string; barColor: string }
+  { color: string }
 > = {
-  '生活': { color: 'text-teal-600 bg-teal-50', barColor: 'bg-teal-600' },
-  '家用': { color: 'text-blue-600 bg-blue-50', barColor: 'bg-blue-600' },
-  '社交': { color: 'text-pink-600 bg-pink-50', barColor: 'bg-pink-600' },
-  '娛樂': { color: 'text-amber-600 bg-amber-50', barColor: 'bg-amber-500' },
-  '雜支': { color: 'text-slate-600 bg-slate-100', barColor: 'bg-slate-500' },
+  '生活': { color: 'text-teal-600 bg-teal-50' },
+  '家用': { color: 'text-blue-600 bg-blue-50' },
+  '社交': { color: 'text-pink-600 bg-pink-50' },
+  '娛樂': { color: 'text-amber-700 bg-amber-50' },
+  '雜支': { color: 'text-violet-800 bg-violet-50' },
 };
 
 export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
@@ -147,10 +148,8 @@ export const BudgetProgressPanel: React.FC<BudgetProgressPanelProps> = ({
                 {/* Progress capsule */}
                 <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isOver ? 'bg-rose-500' : meta.barColor
-                    }`}
-                    style={{ width: `${barPct}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : ''}`}
+                    style={{ width: `${barPct}%`, backgroundColor: isOver ? undefined : categoryColor(cat) }}
                   />
                 </div>
               </div>
