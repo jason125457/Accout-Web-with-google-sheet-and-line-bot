@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseAmount, normalizeMonthString, normalizeGasDetails, normalizeGasRecords, normalizeBudgets, normalizeIrregular } from '../gasApi';
 import { formatDate, formatRelativeTime, formatShortDateTime } from '../dateUtils';
-import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd, buildMonthCategoryRows, averageCompletedMonths } from '../financeCalculations';
+import { getPreviousMonth, sumMonthUpToDay, resolveCategoryBudgets, buildCumulativeSeries, projectMonthEnd, buildMonthCategoryRows, averageCompletedMonths, buildYearSummary, irregularYear } from '../financeCalculations';
 import { normalizeCategory } from '../../constants/categories';
 import { Transaction } from '../../types/finance';
 
@@ -201,5 +201,35 @@ describe('normalizeIrregular', () => {
       { id: 'x3', item: '機車保險', amount: 1518, date: '' },
     ]);
     expect(normalizeIrregular(undefined)).toEqual([]);
+  });
+});
+
+describe('year summary', () => {
+  const tx = (month: string, amount: number): Transaction => ({
+    id: month + amount, date: `${month}-05`, item: 'x', category: '生活', amount, month,
+  });
+  const today = new Date(2026, 9, 9); // 2026-10-09
+  const rows = buildMonthCategoryRows([tx('2025-12', 9000), tx('2026-01', 10000), tx('2026-02', 12000), tx('2026-10', 3000)], '2026-10');
+  const irregular = [
+    { amount: 27000, date: '2026-05-01' },
+    { amount: 5000, date: '' },            // undated -> current year
+    { amount: 8000, date: '2025-08-01' },
+  ];
+
+  it('assigns undated irregular items to the current year', () => {
+    expect(irregularYear({ date: '' }, today)).toBe('2026');
+    expect(irregularYear({ date: '2025-08-01' }, today)).toBe('2025');
+  });
+
+  it('sums regular and irregular spending and projects the current year', () => {
+    const s = buildYearSummary(rows, irregular, '2026', today);
+    expect(s).toMatchObject({ regular: 25000, irregular: 32000, total: 57000, monthlyAvg: 11000, previousTotal: 17000 });
+    // Jan + Feb actual (22000) + 10 months at 11000 + 32000 irregular
+    expect(s.projected).toBe(22000 + 110000 + 32000);
+  });
+
+  it('does not project a past year', () => {
+    const s = buildYearSummary(rows, irregular, '2025', today);
+    expect(s).toMatchObject({ regular: 9000, irregular: 8000, total: 17000, projected: null, previousTotal: null });
   });
 });

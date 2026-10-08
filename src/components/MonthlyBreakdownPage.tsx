@@ -22,6 +22,8 @@ import {
   buildMonthCategoryRows,
   averageCompletedMonths,
   MonthCategoryRow,
+  buildYearSummary,
+  irregularYear,
 } from '../utils/financeCalculations';
 
 interface MonthlyBreakdownPageProps {
@@ -29,11 +31,11 @@ interface MonthlyBreakdownPageProps {
   irregular?: IrregularExpense[];
 }
 
-type Range = '6' | '12' | 'all';
-const RANGES: { key: Range; label: string }[] = [
+// Rolling windows, a calendar year ("y2026"), or everything.
+type Range = '6' | '12' | 'all' | `y${number}`;
+const ROLLING_RANGES: { key: Range; label: string }[] = [
   { key: '6', label: '近 6 月' },
   { key: '12', label: '近 12 月' },
-  { key: 'all', label: '全部' },
 ];
 
 const fmt = (n: number) => `NT$ ${Math.round(n).toLocaleString()}`;
@@ -124,7 +126,7 @@ const MonthDetailStrip: React.FC<{
  * One-off large expenses from the 「不固定大額支出」 sheet. Shown on their own and never added
  * to monthly totals, averages or charts, so they don't distort the regular monthly picture.
  */
-const IrregularExpensesCard: React.FC<{ items: IrregularExpense[]; monthlyAvg: number }> = ({ items, monthlyAvg }) => {
+const IrregularExpensesCard: React.FC<{ items: IrregularExpense[]; monthlyAvg: number; year: string | null }> = ({ items, monthlyAvg, year }) => {
   const total = items.reduce((sum, x) => sum + x.amount, 0);
   const max = items[0]?.amount ?? 0;
   const monthsEquivalent = monthlyAvg > 0 ? total / monthlyAvg : 0;
@@ -132,7 +134,7 @@ const IrregularExpensesCard: React.FC<{ items: IrregularExpense[]; monthlyAvg: n
     <section className="fintech-card p-4 sm:p-6 min-w-0" aria-label="不固定大額支出">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 mb-4">
         <div>
-          <h3 className="text-base font-extrabold text-ink tracking-tight">不固定大額支出</h3>
+          <h3 className="text-base font-extrabold text-ink tracking-tight">{year ? `${year} 年不固定大額支出` : '不固定大額支出'}</h3>
           <p className="flex items-center gap-1 text-xs text-ink-muted mt-0.5">
             <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             來自試算表「不固定大額支出」分頁，不計入上方每月統計
@@ -163,7 +165,9 @@ const IrregularExpensesCard: React.FC<{ items: IrregularExpense[]; monthlyAvg: n
               <div className="flex items-baseline justify-between gap-3 text-xs">
                 <span className="font-bold text-ink truncate">
                   {x.item}
-                  {x.date && <span className="ml-1.5 font-medium text-ink-subtle">{x.date}</span>}
+                  {x.date
+                    ? <span className="ml-1.5 font-medium text-ink-subtle">{x.date}</span>
+                    : <span className="ml-1.5 font-medium text-amber-700">未填日期・暫計入今年</span>}
                 </span>
                 <span className="shrink-0 tabular-nums">
                   <span className="font-extrabold text-ink">{fmt(x.amount)}</span>
@@ -245,14 +249,35 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
   const chartRef = useRef<HTMLDivElement | null>(null);
 
   const allRows = useMemo(() => buildMonthCategoryRows(transactions), [transactions]);
+  // Years that have any regular or irregular spending, oldest first.
+  const years = useMemo(() => {
+    const set = new Set<string>(allRows.map(r => r.month.slice(0, 4)));
+    irregular.forEach(x => set.add(irregularYear(x)));
+    return [...set].sort();
+  }, [allRows, irregular]);
+  const selectedYear = range.startsWith('y') ? range.slice(1) : null;
+  const rangeOptions: { key: Range; label: string }[] = [
+    ...ROLLING_RANGES,
+    ...years.map(y => ({ key: `y${y}` as Range, label: `${y} 年` })),
+    { key: 'all', label: '全部' },
+  ];
+
   const rows = useMemo(
-    () => (range === 'all' ? allRows : allRows.slice(-Number(range))),
-    [allRows, range]
+    () => (selectedYear
+      ? allRows.filter(r => r.month.startsWith(selectedYear))
+      : range === 'all' ? allRows : allRows.slice(-Number(range))),
+    [allRows, range, selectedYear]
   );
 
   const avgTotal = averageCompletedMonths(rows);
   const avgShown = isolated ? averageCompletedMonths(rows, isolated) : avgTotal;
   const periodTotal = rows.reduce((sum, r) => sum + r.total, 0);
+  const yearSummary = selectedYear ? buildYearSummary(allRows, irregular, selectedYear) : null;
+  const yearChange = yearSummary?.previousTotal
+    ? Math.round(((yearSummary.total - yearSummary.previousTotal) / yearSummary.previousTotal) * 100)
+    : null;
+  const yearIrregular = selectedYear ? irregular.filter(x => irregularYear(x) === selectedYear) : [];
+  const shownIrregular = selectedYear ? yearIrregular : irregular;
   const completed = rows.filter(r => !r.isInProgress);
   const highest = completed.reduce<MonthCategoryRow | null>((m, r) => (!m || r.total > m.total ? r : m), null);
   const lowest = completed.reduce<MonthCategoryRow | null>((m, r) => (!m || r.total < m.total ? r : m), null);
@@ -343,7 +368,9 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
     );
   }
 
-  const rangeLabel = rows.length > 0 ? `${monthLong(rows[0].month)} – ${monthLong(rows[rows.length - 1].month)}` : '';
+  const rangeLabel = selectedYear
+    ? `${selectedYear} 年全年`
+    : rows.length > 0 ? `${monthLong(rows[0].month)} – ${monthLong(rows[rows.length - 1].month)}` : '';
 
   return (
     <div className="space-y-5 sm:space-y-6 min-w-0">
@@ -354,7 +381,7 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
           <p className="text-xs text-ink-muted mt-0.5">{rangeLabel}</p>
         </div>
         <div className="inline-flex p-1 rounded-xl bg-surface border border-line self-start sm:self-auto" role="tablist" aria-label="分析期間">
-          {RANGES.map(r => (
+          {rangeOptions.map(r => (
             <button
               key={r.key}
               role="tab"
@@ -372,10 +399,29 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
 
       {/* ── Summary tiles ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatTile label="期間總支出" value={fmt(periodTotal)} hint={`${rows.length} 個月`} />
-        <StatTile label="月平均" value={fmt(avgTotal)} hint="不含進行中的月份" />
-        <StatTile label="最高月份" value={highest ? fmt(highest.total) : '—'} hint={highest ? monthLong(highest.month) : undefined} />
-        <StatTile label="最低月份" value={lowest ? fmt(lowest.total) : '—'} hint={lowest ? monthLong(lowest.month) : undefined} />
+        {yearSummary ? (
+          <>
+            <StatTile
+              label={`${yearSummary.year} 年總支出`}
+              value={fmt(yearSummary.total)}
+              hint={yearChange !== null ? `比 ${Number(yearSummary.year) - 1} 年${yearChange >= 0 ? '多' : '少'} ${Math.abs(yearChange)}%` : '日常 + 不固定大額'}
+            />
+            <StatTile label="日常支出" value={fmt(yearSummary.regular)} hint={`月平均 ${fmt(yearSummary.monthlyAvg)}`} />
+            <StatTile label="不固定大額" value={fmt(yearSummary.irregular)} hint={`${yearIrregular.length} 筆`} />
+            {yearSummary.projected !== null ? (
+              <StatTile label="年底推估" value={fmt(yearSummary.projected)} hint="其餘月份以月平均估算" />
+            ) : (
+              <StatTile label="最高月份" value={highest ? fmt(highest.total) : '—'} hint={highest ? monthLong(highest.month) : undefined} />
+            )}
+          </>
+        ) : (
+          <>
+            <StatTile label="期間總支出" value={fmt(periodTotal)} hint={`${rows.length} 個月`} />
+            <StatTile label="月平均" value={fmt(avgTotal)} hint="不含進行中的月份" />
+            <StatTile label="最高月份" value={highest ? fmt(highest.total) : '—'} hint={highest ? monthLong(highest.month) : undefined} />
+            <StatTile label="最低月份" value={lowest ? fmt(lowest.total) : '—'} hint={lowest ? monthLong(lowest.month) : undefined} />
+          </>
+        )}
       </div>
 
       {/* ── Composition chart ── */}
@@ -496,7 +542,9 @@ export const MonthlyBreakdownPage: React.FC<MonthlyBreakdownPageProps> = ({ tran
       </section>
 
       {/* ── One-off large expenses (kept out of the monthly numbers above) ── */}
-      {irregular.length > 0 && <IrregularExpensesCard items={irregular} monthlyAvg={avgTotal} />}
+      {shownIrregular.length > 0 && (
+        <IrregularExpensesCard items={shownIrregular} monthlyAvg={avgTotal} year={selectedYear} />
+      )}
 
       {/* ── Month cards ── */}
       <section aria-label="各月份摘要">

@@ -257,3 +257,54 @@ export function averageCompletedMonths(rows: MonthCategoryRow[], category?: Tran
   const sum = done.reduce((acc, r) => acc + (category ? r.byCategory[category] : r.total), 0);
   return Math.round(sum / done.length);
 }
+
+/** Year an irregular expense belongs to; undated items count toward the current year. */
+export function irregularYear(item: { date: string }, today: Date = new Date()): string {
+  return /^\d{4}/.test(item.date) ? item.date.slice(0, 4) : String(today.getFullYear());
+}
+
+export interface YearSummary {
+  year: string;
+  regular: number;          // sum of 記帳明細 for the year
+  irregular: number;        // sum of 不固定大額支出 for the year
+  total: number;            // regular + irregular
+  monthlyAvg: number;       // average of completed months
+  projected: number | null; // current year only: completed months + avg for the rest + irregular
+  previousTotal: number | null; // previous year's total, if any data exists
+}
+
+export function buildYearSummary(
+  rows: MonthCategoryRow[],
+  irregular: { amount: number; date: string }[],
+  year: string,
+  today: Date = new Date()
+): YearSummary {
+  const sumYear = (y: string) => {
+    const regular = rows.filter(r => r.month.startsWith(y)).reduce((s, r) => s + r.total, 0);
+    const irr = irregular.filter(x => irregularYear(x, today) === y).reduce((s, x) => s + x.amount, 0);
+    return { regular, irr };
+  };
+  const yearRows = rows.filter(r => r.month.startsWith(year));
+  const { regular, irr } = sumYear(year);
+  const monthlyAvg = averageCompletedMonths(yearRows);
+
+  const isCurrentYear = year === String(today.getFullYear());
+  const completed = yearRows.filter(r => !r.isInProgress);
+  const projected = isCurrentYear && completed.length > 0
+    ? Math.round(completed.reduce((s, r) => s + r.total, 0) + monthlyAvg * (12 - completed.length) + irr)
+    : null;
+
+  const prevYear = String(Number(year) - 1);
+  const hasPrev = rows.some(r => r.month.startsWith(prevYear)) || irregular.some(x => irregularYear(x, today) === prevYear);
+  const prev = sumYear(prevYear);
+
+  return {
+    year,
+    regular,
+    irregular: irr,
+    total: regular + irr,
+    monthlyAvg,
+    projected,
+    previousTotal: hasPrev ? prev.regular + prev.irr : null,
+  };
+}
