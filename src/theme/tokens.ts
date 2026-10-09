@@ -60,3 +60,25 @@ export const categoryFallback = palette.inkSubtle;
 
 export const categoryColor = (category: string): string =>
   categoryColors[category] ?? categoryFallback;
+
+/**
+ * Calendar heat scale (sequential, one hue, light → dark). Index = heat level 1–5;
+ * text colors keep ≥4.5:1 contrast on each step (white only on the two darkest).
+ */
+export const heatScale: { bg: string; fg: string }[] = [
+  { bg: '#F8FAFC', fg: '#64748B' }, // 0: nothing spent
+  { bg: '#CCFBF1', fg: '#134E4A' },
+  { bg: '#99F6E4', fg: '#134E4A' },
+  { bg: '#2DD4BF', fg: '#0F172A' },
+  { bg: '#0F766E', fg: '#FFFFFF' },
+  { bg: '#134E4A', fg: '#FFFFFF' },
+];
+
+/** Lighter category hues for dark surfaces (e.g. the review hero card on palette.night). */
+export const categoryColorsOnDark: Record<string, string> = {
+  '生活': '#2DD4BF',
+  '家用': '#60A5FA',
+  '社交': '#F472B6',
+  '娛樂': '#FBBF24',
+  '雜支': '#A78BFA',
+};

@@ -50,7 +50,10 @@ account_web/
 ├── scripts/deploy-gas.mjs     # npm run gas:deploy：clasp 推送 → 新版本 → 更新固定部署
 ├── src/
 │   ├── components/
-│   │   ├── Sidebar.tsx        # 左側導覽、連線狀態、同步、雲端設定入口
+│   │   ├── Sidebar.tsx        # 桌機左側導覽（項目來自 constants/navigation.ts）、連線狀態、雲端設定
+│   │   ├── BottomNav.tsx      # 手機/平板底部導覽列（< lg），與側欄共用 NAV_ITEMS
+│   │   ├── CalendarPage.tsx   # 消費月曆熱圖：每日顏色相對近 3 個月日均，點日期看當天明細
+│   │   ├── ReviewPage.tsx     # 月度回顧：總額 vs 平均、類別占比、最大一筆、最常記項目、星期分布、連續記帳
 │   │   ├── TopGreetingBar.tsx # 問候語、分析月份選單、同步按鈕
 │   │   ├── MonthOverviewCard.tsx # 手機首屏：本月已花、預算剩餘、最近 5 筆
 │   │   ├── DashboardSkeleton.tsx # 首次載入（無快取）時的骨架畫面
@@ -63,6 +66,7 @@ account_web/
 │   │   └── SyncModal.tsx      # Google Apps Script URL 與 Token 雲端設定彈窗
 │   ├── constants/categories.ts# 五大分類與舊分類對照 normalizeCategory
 │   ├── constants/categoryIcons.ts # 每個分類一個專屬 Lucide 圖示（禁止用 emoji 當圖示）
+│   ├── constants/navigation.ts # 頁面清單 NAV_ITEMS / AppTab（側欄與底部導覽唯一來源）
 │   ├── hooks/useNow.ts        # 每分鐘更新的現在時間（相對時間顯示用）
 │   ├── theme/tokens.ts       # 設計 Token（顏色唯一來源，Tailwind 與 Recharts 共用）
 │   ├── types/finance.ts       # TypeScript 介面 (Transaction, MonthlySummary, FilterState)
@@ -70,6 +74,7 @@ account_web/
 │   │   ├── gasApi.ts          # GAS 連線；v2 records 與 v1 顯示字串兩種格式的正規化
 │   │   ├── dateUtils.ts       # 上午/下午、序列號、ISO 等日期解析
 │   │   ├── financeCalculations.ts # 月彙總、半年均線、上月同期比較
+│   │   ├── calendarReview.ts  # 月曆熱圖與月度回顧的純函式（日均基準、熱度等級、常記項目、連續記帳）
 │   │   ├── demoData.ts        # 內建擬真 Demo 資料 (保護真實隱私)
 │   │   ├── storage.ts         # LocalStorage 讀寫與快取版本遷移 (CACHE_VERSION)
 │   │   └── __tests__/         # Vitest 回歸測試（地雷 1、2、5 都有覆蓋，TZ 固定 Asia/Taipei）
@@ -130,6 +135,7 @@ account_web/
 - **色彩 Token**：唯一來源是 `src/theme/tokens.ts`，透過 `tailwind.config.ts` 提供 `bg-canvas`、`border-line`、`text-ink-muted`、`bg-primary`、`bg-gold`、`bg-night` 等 class；Recharts 直接 import `palette` / `categoryColor`。**元件內禁止寫死 hex 色碼。**
 - **預算**：來自試算表「預算設定」分頁（doGet v2 的 `budgets`），未設定的類別以半年均值比例當「參考」值（`resolveCategoryBudgets`）。
 - **手機首屏**：`MonthOverviewCard`（本月已花 / 預算剩餘 / 最近 5 筆），僅在 `< sm` 顯示。
+- **導覽**：手機與平板用底部導覽列（`BottomNav`），桌機用側欄；新增頁面只改 `constants/navigation.ts`。月曆熱圖用 `heatScale`，深色卡片上的類別色用 `categoryColorsOnDark`。
 - **數字規範**：所有金額數值必須強制加上 **`tabular-nums`**（避免跳動對齊）與 **`tracking-tight`**。
 
 ---

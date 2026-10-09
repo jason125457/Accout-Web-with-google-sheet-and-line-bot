@@ -4,6 +4,10 @@ import { TopGreetingBar } from './components/TopGreetingBar';
 import { MetricCards } from './components/MetricCards';
 import { MonthOverviewCard } from './components/MonthOverviewCard';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
+import { CalendarPage } from './components/CalendarPage';
+import { ReviewPage } from './components/ReviewPage';
+import { BottomNav } from './components/BottomNav';
+import { AppTab } from './constants/navigation';
 import { MonthCumulativeChart } from './components/MonthCumulativeChart';
 import { ExpenseCharts } from './components/ExpenseCharts';
 import { TransactionList } from './components/TransactionList';
@@ -39,7 +43,11 @@ export const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'warn' | 'error'; text: string } | null>(null);
 
   // Tab navigation
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'monthly'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const selectTab = (tab: AppTab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0 });
+  };
 
   // Mobile sidebar state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -323,7 +331,7 @@ export const App: React.FC = () => {
       {/* 1. Left Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={selectTab}
         dataSource={dataSource}
         isSyncing={isSyncing}
         onRefresh={handleRefresh}
@@ -343,7 +351,6 @@ export const App: React.FC = () => {
             selectedMonth={filters.selectedMonth}
             availableMonths={availableMonths}
             onSelectMonth={(m) => setFilters(prev => ({ ...prev, selectedMonth: m }))}
-            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
             isSyncing={isSyncing}
             onRefresh={handleRefresh}
             showMonthSelector={activeTab === 'dashboard'}
@@ -473,6 +480,21 @@ export const App: React.FC = () => {
                 </div>
               </div>
             </>
+          ) : activeTab === 'calendar' ? (
+            <CalendarPage
+              transactions={transactions}
+              selectedMonth={filters.selectedMonth}
+              availableMonths={availableMonths}
+              onSelectMonth={(m) => setFilters(prev => ({ ...prev, selectedMonth: m }))}
+            />
+          ) : activeTab === 'review' ? (
+            <ReviewPage
+              transactions={transactions}
+              monthlySummaries={dynamicMonthlySummaries}
+              selectedMonth={filters.selectedMonth}
+              availableMonths={availableMonths}
+              onSelectMonth={(m) => setFilters(prev => ({ ...prev, selectedMonth: m }))}
+            />
           ) : (
             /* ── 每月花費分析獨立分頁 ── */
             <Suspense fallback={<div className="py-32 text-center text-sm text-slate-400">載入中…</div>}>
@@ -485,10 +507,13 @@ export const App: React.FC = () => {
         </main>
 
         {/* Minimal Footer with iOS Safe Area */}
-        <footer className="border-t border-line bg-white/60 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-slate-400">
+        <footer className="border-t border-line bg-white/60 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-slate-400">
           <p>個人財務管理儀表板 · LINE Bot + Google Sheets + React & Tailwind</p>
         </footer>
       </div>
+
+      {/* Phone / tablet primary navigation */}
+      <BottomNav activeTab={activeTab} onSelectTab={selectTab} onOpenSettings={() => setIsSyncModalOpen(true)} />
 
       {/* Modals */}
       <SyncModal

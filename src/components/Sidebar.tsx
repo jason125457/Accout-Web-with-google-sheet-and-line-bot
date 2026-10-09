@@ -1,19 +1,18 @@
 import React, { useEffect } from 'react';
 import {
-  LayoutDashboard,
-  CalendarDays,
   Cloud,
   RefreshCw,
   X,
   Wallet
 } from 'lucide-react';
 import { DataSource } from '../types/finance';
+import { AppTab, NAV_ITEMS } from '../constants/navigation';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { useNow } from '../hooks/useNow';
 
 interface SidebarProps {
-  activeTab: 'dashboard' | 'monthly';
-  onSelectTab: (tab: 'dashboard' | 'monthly') => void;
+  activeTab: AppTab;
+  onSelectTab: (tab: AppTab) => void;
   dataSource: DataSource;
   isSyncing: boolean;
   onRefresh: () => void;
@@ -117,37 +116,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           分析與視圖
         </div>
 
-        {/* 總覽儀表板 */}
-        <button
-          onClick={() => {
-            onSelectTab('dashboard');
-            onCloseMobile();
-          }}
-          className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-            activeTab === 'dashboard'
-              ? 'bg-gradient-to-r from-gold to-gold-strong text-night shadow-lg shadow-gold/20'
-              : 'text-slate-300 hover:bg-white/5 hover:text-white'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4 shrink-0" />
-          <span className="flex-1 text-left">總覽儀表板</span>
-        </button>
-
-        {/* 每月花費分析 */}
-        <button
-          onClick={() => {
-            onSelectTab('monthly');
-            onCloseMobile();
-          }}
-          className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
-            activeTab === 'monthly'
-              ? 'bg-gradient-to-r from-gold to-gold-strong text-night shadow-lg shadow-gold/20'
-              : 'text-slate-300 hover:bg-white/5 hover:text-white'
-          }`}
-        >
-          <CalendarDays className="w-4 h-4 shrink-0" />
-          <span className="flex-1 text-left">每月花費分析</span>
-        </button>
+        {NAV_ITEMS.map(({ tab, label, icon: Icon }) => (
+          <button
+            key={tab}
+            onClick={() => {
+              onSelectTab(tab);
+              onCloseMobile();
+            }}
+            aria-current={activeTab === tab ? 'page' : undefined}
+            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
+              activeTab === tab
+                ? 'bg-gradient-to-r from-gold to-gold-strong text-night shadow-lg shadow-gold/20'
+                : 'text-slate-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="flex-1 text-left">{label}</span>
+          </button>
+        ))}
 
         <div className="pt-5 pb-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">

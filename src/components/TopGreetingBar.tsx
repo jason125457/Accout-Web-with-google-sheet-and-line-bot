@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Calendar, RefreshCw, Coffee, Sun, Moon } from 'lucide-react';
+import { Calendar, RefreshCw, Coffee, Sun, Moon } from 'lucide-react';
 import { DataSource } from '../types/finance';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { useNow } from '../hooks/useNow';
@@ -10,7 +10,6 @@ interface TopGreetingBarProps {
   selectedMonth: string;
   availableMonths: string[];
   onSelectMonth: (month: string) => void;
-  onOpenMobileSidebar: () => void;
   isSyncing: boolean;
   onRefresh: () => void;
   showMonthSelector?: boolean;
@@ -24,7 +23,6 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
   selectedMonth,
   availableMonths,
   onSelectMonth,
-  onOpenMobileSidebar,
   isSyncing,
   onRefresh,
   showMonthSelector = true,
@@ -58,17 +56,10 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
   };
 
   return (
-    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-2 w-full min-w-0">
+    <div className={`relative z-10 flex ${showMonthSelector ? 'flex-col sm:flex-row sm:items-center' : 'flex-row items-center'} justify-between gap-3 sm:gap-4 pb-2 w-full min-w-0`}>
+      {/* One row unless the month selector needs its own line on phones */}
       {/* Left: Greeting & Subtitle */}
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        {/* Mobile Hamburger Button */}
-        <button
-          onClick={onOpenMobileSidebar}
-          className="lg:hidden w-11 h-11 flex items-center justify-center rounded-2xl bg-white border border-line text-slate-700 hover:bg-surface-hover shadow-sm transition-colors shrink-0"
-          aria-label="打開導覽選單"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -84,7 +75,7 @@ export const TopGreetingBar: React.FC<TopGreetingBarProps> = ({
       </div>
 
       {/* Right: Controls */}
-      <div className={`flex items-center ${showMonthSelector ? 'justify-between' : 'justify-end'} sm:justify-end gap-2 w-full sm:w-auto shrink-0`}>
+      <div className={`flex items-center ${showMonthSelector ? 'justify-between w-full' : 'justify-end'} sm:justify-end gap-2 sm:w-auto shrink-0`}>
         {/* Month Selector Pill */}
         {showMonthSelector && <div className="relative flex-1 sm:flex-initial min-w-0">
           <div className="min-h-11 flex items-center justify-between gap-2 bg-white border border-line rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-slate-300 transition-colors w-full">
