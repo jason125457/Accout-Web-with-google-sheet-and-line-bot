@@ -66,10 +66,10 @@ account_web/
 
 ## ⚙️ 後端（Google Apps Script）設定
 
-1. 在綁定試算表的 Apps Script 專案貼上 `gas/Code.gs`。
+1. 第一次設定 clasp：到 https://script.google.com/home/usersettings 開啟 Apps Script API，執行 `npx clasp login`，再依 `.clasp.json.example`、`.gas-deploy.json.example` 建立 `.clasp.json`（專案 ID）與 `.gas-deploy.json`（網頁應用程式部署 ID）。這兩個檔案已被 gitignore。
 2. 「專案設定 → 指令碼屬性」填入：`LINE_CHANNEL_ACCESS_TOKEN`、`GEMINI_API_KEY`、`API_SECRET_TOKEN`、（選填）`SPREADSHEET_ID`、`ALLOWED_USER_IDS`。
 3. （選填）在編輯器執行一次 `setupBudgetSheet` 建立「預算設定」分頁。
-4. 「部署 → 管理部署作業 → 編輯 → 新版本」更新**同一個**部署，網址才不會變；LINE Webhook 與前端都連這個網址。
+4. 之後每次修改 `gas/Code.gs`，執行 `npm run gas:deploy -- 這次改了什麼`：自動推送程式、建立新版本並更新**同一個**部署，網址不變；LINE Webhook 與前端都連這個網址。
 5. 在前端「雲端連線設定」貼上網址與 `API_SECRET_TOKEN`（每個裝置各設定一次）。
 
 ---

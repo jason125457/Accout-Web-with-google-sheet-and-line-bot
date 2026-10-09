@@ -45,7 +45,9 @@ account_web/
 ├── .gitignore                 # 嚴格排除 *.xlsx, *.csv, node_modules, dist
 ├── public/                    # 靜態資源目錄 (Cloudflare Pages 預設原生支援 SPA 路由回退，切勿放 /* /index.html 200 的 _redirects 避免 100324 迴圈報錯)
 ├── gas/
-│   └── Code.gs                # GAS 後端：LINE doPost（白名單/多筆/撤銷）+ 儀表板 doGet（v1/v2）
+│   ├── Code.gs                # GAS 後端：LINE doPost（白名單/多筆/撤銷）+ 儀表板 doGet（v1/v2）
+│   └── appsscript.json        # GAS 專案設定（時區、V8、網頁應用程式權限）
+├── scripts/deploy-gas.mjs     # npm run gas:deploy：clasp 推送 → 新版本 → 更新固定部署
 ├── src/
 │   ├── components/
 │   │   ├── Sidebar.tsx        # 左側導覽、連線狀態、同步、雲端設定入口
@@ -116,7 +118,8 @@ account_web/
 - LINE 端：`ALLOWED_USER_IDS` 指令碼屬性為白名單（留空不限制）；「我的ID」查 userId、「撤銷」刪除上一批 LINE 寫入（會先比對內容）。寫入一律包在 `LockService` 內。
 - LINE 解析分兩層：`parseSimpleRecords` 先以規則處理「項目 金額」（分類靠 `CATEGORY_KEYWORDS`），只要有日期詞、運算或認不出分類就回傳 null 交給 Gemini。新增常用店家請加到 `CATEGORY_KEYWORDS`。
 - 線上只維護一個部署「Claude最新版」（`AKfycbyCVO01…`），LINE Webhook 與前端都連它；其他舊部署未封存但已不使用。
-- 修改 `gas/Code.gs` 後必須手動貼到 Apps Script 並「管理部署 → 編輯 → 新版本」，否則 Web App URL 仍跑舊程式。
+- **GAS 一律用 clasp 部署**：改完 `gas/Code.gs` 執行 `npm run gas:deploy -- 說明`，會推送 `gas/`、建立新版本並把「Claude最新版」部署指向它（網址不變）。不要再手動貼到網頁編輯器，也不要在編輯器另外部署，以免 repo 與線上不一致。
+- clasp 設定檔 `.clasp.json`（scriptId）與 `.gas-deploy.json`（部署 ID）含線上端點，**已 gitignore、不可提交**（repo 為公開）；新環境參考 `*.example` 建立，並先 `npx clasp login`。`gas/appsscript.json` 是線上專案設定的版控來源。
 
 ---
 
@@ -148,6 +151,9 @@ npm run preview
 
 # 5. 執行解析/日期/金額回歸測試 (Vitest)
 npm test
+
+# 6. 部署 GAS 後端（推送 gas/ → 新版本 → 更新固定部署，網址不變）
+npm run gas:deploy -- 這次改了什麼
 ```
 
 ---

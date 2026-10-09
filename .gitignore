@@ -40,3 +40,8 @@ lerna-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
+
+# clasp (Apps Script CLI): project + deployment ids stay local; the repo is public
+.clasp.json
+.gas-deploy.json
+.clasprc.json
